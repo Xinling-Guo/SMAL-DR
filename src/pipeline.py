@@ -1004,7 +1004,7 @@ def main(config_path):
     
     #............................................... Task4 :  Inference by PairNet(Transformer)..........................................................................................#
     pipeline_task6 = SMALDRTask6(config_path)
-    pipeline_task6.run_task4()
+    pipeline_task6.run_task6()
     
 
 if __name__ == "__main__":
