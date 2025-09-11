@@ -648,33 +648,30 @@ class SMALDRTask2:
 
 class SMALDRTask3:
     def __init__(self, config_path):
-        """初始化任务配置"""
+        """Initialize task configuration"""
         with open(config_path, 'r') as f:
             self.config = json.load(f)
         self.logger = logging.getLogger(__name__)
         self.setup_logging()
         
-        # 配置目录路径等
+        # Configure directory paths
         self.data_dir = Path(self.config['task3_config']['data_dir'])
         self.results_dir = Path(self.config['task3_config']['results_dir'])
         self.model_save_dir = self.results_dir / "model_weights"
         self.model_save_dir.mkdir(parents=True, exist_ok=True)
 
     def setup_logging(self):
-        """设置日志"""
+        """set log"""
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def run_step1_setup(self):
-        """Step 1: 设置环境与配置参数"""
+        """Step 1: set config"""
         self.logger.info("Setting up environment and configurations...")
         
-        # 设置随机种子
         task3_utils.set_seed(42)  # 使用task3_utils中的set_seed方法
-        
-        # 选择设备（GPU/CPU）
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
-        # 数据路径和模型保存路径
+
         self.embeddings_dir = self.data_dir / "Esm2Embedding-sp-1280"
         self.config_params = {
             "batch_size": self.config['task3_config']['batch_size'],
@@ -687,17 +684,15 @@ class SMALDRTask3:
             "patience": self.config['task3_config']['patience']
         }
         
-        # 准备数据集和数据加载器
         self.train_ds = task3_utils.PairwiseDataset(self.data_dir, ["FITNESS"], self.config_params["diff_threshold"], self.embeddings_dir)
         self.train_loader = DataLoader(self.train_ds, batch_size=self.config_params["batch_size"], shuffle=True)
         
         self.logger.info(f"Data setup completed. Training with batch size {self.config_params['batch_size']}.")
 
     def run_step2_build_model(self):
-        """Step 2: 构建模型"""
+
         self.logger.info("Building model...")
         
-        # 使用 task3_utils.PairNet 来初始化模型
         self.model = task3_utils.PairNet(input_dim=self.train_ds.embeddings[0].shape[0]).to(self.device)
         self.loss_fn = torch.nn.MarginRankingLoss(margin=self.config_params["margin"])
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.config_params["lr"], weight_decay=self.config_params["weight_decay"])
@@ -706,21 +701,18 @@ class SMALDRTask3:
         self.logger.info("Model built and ready for training.")
 
     def run_step3_train(self):
-        """Step 3: 训练模型"""
         self.logger.info("Starting training...")
 
         best_val_loss = float('inf')
         no_improve = 0
         best_model_path = self.model_save_dir / f"best_model.pth"
 
-        # 训练循环
         for epoch in range(1, self.config_params["epochs"] + 1):
             train_loss = task3_utils.train_epoch(self.model, self.train_loader, self.optimizer, self.loss_fn, self.device)
             self.scheduler.step(train_loss)
 
             self.logger.info(f"Epoch {epoch}: train_loss={train_loss:.4f}")
 
-            # 保存当前最佳模型
             if train_loss < best_val_loss:
                 best_val_loss = train_loss
                 no_improve = 0
@@ -734,7 +726,6 @@ class SMALDRTask3:
         self.logger.info("Training completed. Best model saved.")
 
     def run_task3(self):
-        """执行整个任务3（MLP训练）"""
         self.logger.info("Starting Task 3: MLP Model Training")
         self.run_step1_setup()   # Step 1
         self.run_step2_build_model()  # Step 2
@@ -744,13 +735,11 @@ class SMALDRTask3:
 
 class SMALDRTask4:
     def __init__(self, config_path):
-        """初始化任务配置"""
         with open(config_path, 'r') as f:
             self.config = json.load(f)
         self.logger = logging.getLogger(__name__)
         self.setup_logging()
 
-        # 配置路径
         self.main_dir = Path(self.config['task4_config']['main_dir'])
         self.output_dir = Path(self.config['task4_config']['output_dir'])
         self.model_weight = Path(self.config['task4_config']['model_weight'])
@@ -760,11 +749,9 @@ class SMALDRTask4:
         self.output_dir.mkdir(parents=True, exist_ok=True)  # 确保输出目录存在
 
     def setup_logging(self):
-        """设置日志"""
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def run_step1_create_embedding_cache(self):
-        """Step 1: 创建嵌入缓存"""
         self.logger.info("Creating embedding cache...")
         if not self.cache_path.exists():
             with open(self.json_path, "r") as f:
@@ -790,17 +777,13 @@ class SMALDRTask4:
             self.logger.info("Embedding cache already exists.")
 
     def run_step2_inference(self):
-        """Step 2: 推理"""
         self.logger.info("Starting inference...")
 
-        # 通过 task4_utils 中的推理函数进行推理
         task4_utils.inference(self.model_weight, self.main_dir, self.cache_path, self.output_dir, self.config)
 
     def run_step3_merge_results(self):
-        """Step 3: 合并推理结果"""
         self.logger.info("Merging inference results...")
 
-        # 合并各 rank 的推理结果，并保存最终的结果
         files = list(self.output_dir.glob("rank*_winrates.csv"))
         dfs = [pd.read_csv(f) for f in files]
         final_df = pd.concat(dfs).groupby("variant_id", as_index=False).mean()
@@ -809,7 +792,6 @@ class SMALDRTask4:
         self.logger.info(f"Final sorted results saved to {self.output_dir / self.config['task4_config']['output_file']}")
 
     def run_task4(self):
-        """执行整个任务4（MLP推理）"""
         self.logger.info("Starting Task 4: MLP Model Inference")
         self.run_step1_create_embedding_cache()  # Step 1: 创建嵌入缓存
         self.run_step2_inference()  # Step 2: 推理
