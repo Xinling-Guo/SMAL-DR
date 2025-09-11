@@ -7,8 +7,8 @@ The tasks in this pipeline are:
 - **Task 2**: Domain boundary refinement using DALI structural alignment.
 - **Task 3**: MLP-based model training for protein data.
 - **Task 4**: MLP-based model inference for protein data.
-- **Task 5**: Transformer-based model training for protein data (distributed).
-- **Task 6**: Transformer-based model inference for protein data (distributed).
+- **Task 5**: Transformer-based model training for protein data.
+- **Task 6**: Transformer-based model inference for protein data.
 
 ## Requirements
 
@@ -20,3 +20,4 @@ To install the necessary dependencies, run the following command:
 
 ```bash
 pip install -r requirements.txt
+
