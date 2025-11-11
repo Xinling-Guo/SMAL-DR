@@ -5,8 +5,8 @@ This repository contains the code for a comprehensive pipeline designed to proce
 ## Pipeline Overview
 
 The SMAL-DR pipeline consists of the following tasks:
-- **Task 1**: Protein sequence data processing and domain identification.
-- **Task 2**: Domain boundary refinement using DALI structural alignment.
+- **Task 1**: Structural fold mining from the TED database identifies diverse HNH-like domains for Cas9 engineering.
+- **Task 2**: Refining domain boundaries using DALI structural alignment to enhance recombinational compatibility.
 - **Task 3**: MLP-based model training for protein data.
 - **Task 4**: MLP-based model inference for protein data.
 - **Task 5**: Transformer-based model training for protein data.
@@ -44,6 +44,7 @@ Clone the repository and install dependencies:
 git clone https://github.com/yourusername/SMAL-DR.git
 cd SMAL-DR
 pip install -r requirements.txt
+
 
 
 
