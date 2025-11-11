@@ -11,6 +11,7 @@ The SMAL-DR pipeline consists of the following tasks:
 - **Task 4**: MLP-based model inference for protein data.
 - **Task 5**: Transformer-based model training for protein data.
 - **Task 6**: Transformer-based model inference for protein data.
+- 
 The pipeline can be executed using the `pipeline.py` script.
 
 
@@ -85,6 +86,7 @@ Processed Data:
 Processed protein and domain data files from the structural alignment and domain identification steps.
 
 Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
+
 
 
 
