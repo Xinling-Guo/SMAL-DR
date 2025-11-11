@@ -71,7 +71,7 @@ git clone https://github.com/yourusername/SMAL-DR.git
 cd SMAL-DR
 pip install -r requirements.txt
 
-### Demo Instructions
+## Demo Instructions
 
 The full SMAL-DR pipeline can be run directly by executing the following command:
 
@@ -110,6 +110,7 @@ Processed Data:
 Processed protein and domain data files from the structural alignment and domain identification steps.
 
 Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
+
 
 
 
