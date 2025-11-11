@@ -62,7 +62,7 @@ python src/pipeline.py
   - PyTorch 2.1  
   - Foldseek 9.0, TM-align (Nov 2022 build), DALI v5
 
-### Installation Guide
+## Installation Guide
 
 Clone the repository and install dependencies:
 
@@ -110,6 +110,7 @@ Processed Data:
 Processed protein and domain data files from the structural alignment and domain identification steps.
 
 Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
+
 
 
 
