@@ -38,7 +38,7 @@ All stages can be executed seamlessly through the integrated entry point:
 
 ```bash
 python src/pipeline.py
-
+````
 
 ## System Requirements
 
@@ -110,6 +110,7 @@ Processed Data:
 Processed protein and domain data files from the structural alignment and domain identification steps.
 
 Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
+
 
 
 
