@@ -4,15 +4,40 @@ This repository contains the code for a comprehensive pipeline designed to proce
 
 ## Pipeline Overview
 
-The SMAL-DR pipeline consists of the following tasks:
-- **Task 1**: Structural fold mining from the TED database identifies diverse HNH-like domains for Cas9 engineering.
-- **Task 2**: Refining domain boundaries using DALI structural alignment to enhance recombinational compatibility.
-- **Task 3**: MLP-based model training for protein data.
-- **Task 4**: MLP-based model inference for protein data.
-- **Task 5**: Transformer-based model training for protein data.
-- **Task 6**: Transformer-based model inference for protein data.
-- 
-The pipeline can be executed using the `pipeline.py` script.
+The **SMAL-DR (Structural fold Mining And deep Learning-guided Domain Recombination)** pipeline is a modular and extensible framework designed for protein domain analysis and engineering.  
+It integrates large-scale structural data mining, alignment-based domain refinement, and deep learning-driven activity prediction into a unified workflow.
+
+SMAL-DR operates in six main stages:
+
+- **Task 1 – Structural Fold Mining (Database Exploration)**  
+  In this stage, the pipeline mines structural folds from the TED database to identify and classify diverse HNH-like domains relevant to Cas9 engineering.  
+  This process based TED (The Encyclopedia of Domains,Lau AMC et al. (2024) Exploring structural diversity across the protein universe with The Encyclopedia of Domains. Science 386:e adq4946.) to collect, filter, and preprocess protein domain information, preparing it for downstream structural and functional analyses.
+
+- **Task 2 – Domain Boundary Refinement (DALI Alignment)**  
+  Structural boundaries of candidate domains are refined using DALI structural alignment.  
+  This step ensures recombinational compatibility between domain fragments and improves the precision of subsequent modeling by removing poorly aligned or structurally inconsistent regions.
+
+- **Task 3 – MLP Model Training (Supervised Learning)**  
+  A model based multilayer perceptron (PairNet-MLP) is trained on curated wet-lab datasets and sequence embeddings (from ESM-2).  
+  The model learns to capture sequence–activity relationships and predict activity outcomes for engineered variants.
+
+- **Task 4 – MLP Model Inference**  
+  The trained MLP model is applied to unseen protein variants to infer potential activity and assess the recombinational compatibility of newly designed domains.
+
+- **Task 5 – Transformer Model Training (Sequence Representation Learning)**  
+  A model based transformer (PairNet-Transformer) is trained on curated wet-lab datasets and sequence embeddings (from ESM-2).  
+  The model learns to capture sequence–activity relationships and predict activity outcomes for engineered variants.
+
+- **Task 6 – Transformer Model Inference**  
+  The trained Transformer modelis applied to unseen protein variants to infer potential activity and assess the recombinational compatibility of newly designed domains.
+
+---
+
+Overall, the SMAL-DR pipeline provides an end-to-end computational solution for **protein domain discovery, boundary refinement, and activity prediction**.  
+All stages can be executed seamlessly through the integrated entry point:
+
+```bash
+python src/pipeline.py
 
 
 ## System Requirements
@@ -46,8 +71,7 @@ git clone https://github.com/yourusername/SMAL-DR.git
 cd SMAL-DR
 pip install -r requirements.txt
 
-
-## Demo Instructions
+### Demo Instructions
 
 The full SMAL-DR pipeline can be run directly by executing the following command:
 
@@ -86,6 +110,7 @@ Processed Data:
 Processed protein and domain data files from the structural alignment and domain identification steps.
 
 Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
+
 
 
 
