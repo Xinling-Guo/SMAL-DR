@@ -14,29 +14,29 @@ RecombRank: Pairwise ranking model predicting the relative activity of domain re
 
 ## Table of Contents
 
-Overview
+-Overview
 
-System Requirements
+-System Requirements
 
-Installation
+-Installation
 
-Data and Directory Structure
+-Data and Directory Structure
 
-Configuration File (config.json)
+-Configuration File (config.json)
 
-Pipeline Tasks (1–6)
+-Pipeline Tasks (1–6)
 
-Demo Execution
+-Demo Execution
 
-Output Files
+-Output Files
 
-Optional: Task Control
+-Optional: Task Control
 
-Reproducibility and Best Practices
+-Reproducibility and Best Practices
 
-Troubleshooting
+-Troubleshooting
 
-License and Citation
+-License and Citation
 
 Overview
 
@@ -165,6 +165,7 @@ Processed Data:
 Processed protein and domain data files from the structural alignment and domain identification steps.
 
 Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
+
 
 
 
