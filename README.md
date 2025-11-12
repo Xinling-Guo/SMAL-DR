@@ -206,7 +206,7 @@ Typical outputs (may vary based on configuration):
 
 ## License and Citation
 
-  - License: Add an OSI-approved license (e.g., MIT / BSD-3-Clause / Apache-2.0) in a LICENSE file and summarize the key terms here.
+  - License: This project is licensed under the Apache License 2.0 - see the [LICENSE](./LICENSE) file for details.
 
   - Citation (example placeholder):
 
@@ -218,6 +218,7 @@ Authors, Journal/Year, DOI
     -Foldseek
     -DALI (DaliLite v5)
     -TED (The Encyclopedia of Domains)
+
 
 
 
