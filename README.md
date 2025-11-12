@@ -151,28 +151,35 @@ python src/pipeline.py --config data/Cas9_submit/config.json
 ## Output Files
 
 Typical outputs (may vary based on configuration):
+
   - Task1
     - work_dir/protein_relation_v3/domain_cath_teddb/cytoscape_network/cas9_fs_edge.csv
     - work_dir/protein_relation_v3/domain_cath_teddb/cytoscape_network/domain_cath_teddb_SpCas9.csv
     - work_dir/protein_relation_v3/domain_All_teddb_SpCas9.csv
     - work_dir/protein_relation_v3/domain_All_teddb_SpCas9_filter.csv
+      
   - Task2
     - Dali_results/dali_results.csv
     - Dali_results/dali_10_results_pro.csv
     - Dali_results/Target_Dali_domain_10/, Dali_results/Query_Dali_domain_10/
     - Dali_results/FS_results/All_fstm_results.csv
     - Dali_results/dali_10_refined_results.csv
+      
   - Task4 (MLP Inference)
     - .../output/mlp_inference/final_sorted_winrates.csv
+      
   - Task5 (Transformer Training)
     - .../model_weights/transformer_train/<best_model_filename>
+    
   - Task6 (Transformer Inference)
     - .../output/transformer_inference/final_sorted_winrates.csv
-    - 
+      
 ## Optional: Task Control
 
   - Enable/disable Task1 phases using Boolean flags in config.json (e.g., run_step2_cath_teddb = true/false).
+    
   - Control Task2 substeps under task2_config (e.g., run_step1_download, run_step2_dali).
+    
   - RecombRank training and inference are configured through task3_config–task6_config.
 
 ## Reproducibility and Best Practices
@@ -180,116 +187,37 @@ Typical outputs (may vary based on configuration):
   - ESM-2 embeddings: Use consistent model and dimension (e.g., 1280-dim), with standardized pooling and site alignment.
 
   - Random seed: Set a fixed seed (e.g., set_seed(42)) for reproducible results.
+ 
   - Naming consistency: Match best_model_filename and model_weight between training/inference.
+ 
   - Cache reuse: Reuse embedding_cache.pt for faster subsequent inference.
+
   - External tool paths: Always provide absolute paths if not available in PATH.
 
+## Troubleshooting
 
+  - File not found: Check --config path, file existence, mount points, and permissions.
 
-- **Task 1 – Structural Fold Mining (Database Exploration)**  
-  In this stage, the pipeline mines structural folds from the TED database to identify and classify diverse HNH-like domains relevant to Cas9 engineering.  
-  This process based TED (The Encyclopedia of Domains,Lau AMC et al. (2024) Exploring structural diversity across the protein universe with The Encyclopedia of Domains. Science 386:e adq4946.) to collect, filter, and preprocess protein domain information, preparing it for downstream structural and functional analyses.
+  - External tool errors: Verify DALI/Foldseek binaries exist and are executable.
 
-- **Task 2 – Domain Boundary Refinement (DALI Alignment)**  
-  Structural boundaries of candidate domains are refined using DALI structural alignment.  
-  This step ensures recombinational compatibility between domain fragments and improves the precision of subsequent modeling by removing poorly aligned or structurally inconsistent regions.
+  - Module import errors: Ensure execution from project root or add src/ to PYTHONPATH.
 
-- **Task 3 – MLP Model Training (Supervised Learning)**  
-  A model based multilayer perceptron (PairNet-MLP) is trained on curated wet-lab datasets and sequence embeddings (from ESM-2).  
-  The model learns to capture sequence–activity relationships and predict activity outcomes for engineered variants.
+  - Empty inference output: Verify .npy embeddings and JSON index (active_numbers) match, and that embedding directories are consistent between training and inference.
 
-- **Task 4 – MLP Model Inference**  
-  The trained MLP model is applied to unseen protein variants to infer potential activity and assess the recombinational compatibility of newly designed domains.
+## License and Citation
 
-- **Task 5 – Transformer Model Training (Sequence Representation Learning)**  
-  A model based transformer (PairNet-Transformer) is trained on curated wet-lab datasets and sequence embeddings (from ESM-2).  
-  The model learns to capture sequence–activity relationships and predict activity outcomes for engineered variants.
+  - License: Add an OSI-approved license (e.g., MIT / BSD-3-Clause / Apache-2.0) in a LICENSE file and summarize the key terms here.
 
-- **Task 6 – Transformer Model Inference**  
-  The trained Transformer modelis applied to unseen protein variants to infer potential activity and assess the recombinational compatibility of newly designed domains.
+  - Citation (example placeholder):
 
----
+SMAL-DR & RecombRank: Structural fold mining and deep learning-guided domain recombination.
+Authors, Journal/Year, DOI
 
-Overall, the SMAL-DR pipeline provides an end-to-end computational solution for **protein domain discovery, boundary refinement, and activity prediction**.  
-All stages can be executed seamlessly through the integrated entry point:
-
-```bash
-python src/pipeline.py
-````
-
-## System Requirements
-
-- **Operating System:** Linux  
-- **Python:** 3.9  
-- **Dependencies:** Listed in `requirements.txt`  
-- **External Tools:**  
-  The SMAL-DR pipeline integrates several external bioinformatics and structural analysis tools:  
-  - **[DALI](http://ekhidna2.biocenter.helsinki.fi/dali/)** — for structural alignment and domain boundary refinement  
-  - **[Foldseek](https://github.com/steineggerlab/foldseek)** — for rapid structural comparison (optional but recommended)  
-  - **[TM-align](https://zhanggroup.org/TM-align/)** — for fold-level structural similarity evaluation  
-  - **[ESM-2](https://github.com/facebookresearch/esm)** — pretrained protein language model for embedding generation  
-  - **BLAST+** (optional) — for initial sequence-based similarity search  
-- **Hardware Requirements:**  
-  - GPU recommended for Transformer model training and inference (e.g., NVIDIA RTX 3090 / A100)  
-  - CPU-only mode is supported for feature extraction and MLP inference  
-- **Tested Environment:**  
-  - Ubuntu 22.04  
-  - Python 3.9  
-  - CUDA 12.3  
-  - PyTorch 2.1  
-  - Foldseek 9.0, TM-align (Nov 2022 build), DALI v5
-
-## Installation Guide
-
-Clone the repository and install dependencies:
-
-```bash
-git clone https://github.com/yourusername/SMAL-DR.git
-cd SMAL-DR
-pip install -r requirements.txt
-````
-
-## Demo Instructions
-
-The full SMAL-DR pipeline can be run directly by executing the following command:
-
-```bash
-python src/pipeline.py
-````
-
-What the demo will do:
-Input data:
-The pipeline will automatically read the example input data from data/Cas9_submit/test.csv.
-This file contains pre-collected protein domain information for demonstration purposes. 
-
-Pipeline Execution:
-Running the command will sequentially execute the following tasks:
-Task 1: Structural fold mining to identify diverse HNH-like domains for Cas9 engineering.
-Task 2: Refining domain boundaries using DALI structural alignment.
-Task 3: MLP-based model training using wet-lab data.
-Task 4: MLP-based model inference.
-Task 5: Transformer-based model training using wet-lab data.
-Task 6: Transformer-based model inference.
-
-Output:
-After running the pipeline, the following output will be generated:
-Log files:
-smal_dr_phase1.log: Logs for Task 1 execution.
-smal_dr_phase2.log: Logs for Task 2 execution.
-
-Resulting Processed Data:
-Files will be saved in your working directory as defined in the config.json. This includes various processed files from tasks such as PDB data, domain information, and refined structural data.
-
-Expected Output:
-The following results will be available in your specified work_dir:
-Log files: Detailed logs for each task, saved as .log files, indicating the progress and results of each pipeline step.
-
-Processed Data:
-
-Processed protein and domain data files from the structural alignment and domain identification steps.
-
-Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
-
+  - Third-Party Resources:
+    -ESM-2 (Meta AI)
+    -Foldseek
+    -DALI (DaliLite v5)
+    -TED (The Encyclopedia of Domains)
 
 
 
