@@ -4,6 +4,7 @@ import sys
 import pandas as pd
 import logging
 from pathlib import Path
+import argparse
 
 # Add utils path and import
 utils_path = '/mnt/sdb4/protein_gen/Cas9_domain_work/code_submit/'
@@ -990,5 +991,7 @@ def main(config_path):
     
 
 if __name__ == "__main__":
-    config_file_path = "/mnt/sdb4/protein_gen/Cas9_domain_work/data/TED/Cas9_submit/config.json" 
-    main(config_file_path)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--config", default="data/Cas9_submit/config.json")
+    args = ap.parse_args()
+    main(args.config)
