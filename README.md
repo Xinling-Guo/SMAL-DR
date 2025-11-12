@@ -126,7 +126,7 @@ Ensure Task5 best_model_filename matches Task6 model_weight (e.g., best_model_tr
   - Retrieves and processes candidate domains from TED/CATH/cluster-related sources, downloads structure/sequence files, organizes output directories, and performs structure searches via Foldseek.
 
 ### Task 2 — DALI Boundary Refinement
-  -Uses DALI for structure-based alignments between candidate and reference domains, outputs refined domains and structural similarity files.
+  - Uses DALI for structure-based alignments between candidate and reference domains, outputs refined domains and structural similarity files.
 
 ### Task 3 — RecombRank (MLP Fusion) Training
   - Trains a pairwise ranking model using ESM-2 FSE and CSE embeddings with an MLP-based fusion network and MarginRankingLoss.
@@ -142,9 +142,49 @@ Ensure Task5 best_model_filename matches Task6 model_weight (e.g., best_model_tr
 
 Tasks 3–6 share the same model logic (RecombRank) and differ only in the FSE+CSE fusion approach (MLP vs Transformer).
 
+## Demo Execution
+Run the integrated pipeline:
+
+```bash
+python src/pipeline.py --config data/Cas9_submit/config.json
+````
+## Output Files
+
+Typical outputs (may vary based on configuration):
+  - Task1
+    - work_dir/protein_relation_v3/domain_cath_teddb/cytoscape_network/cas9_fs_edge.csv
+    - work_dir/protein_relation_v3/domain_cath_teddb/cytoscape_network/domain_cath_teddb_SpCas9.csv
+    - work_dir/protein_relation_v3/domain_All_teddb_SpCas9.csv
+    - work_dir/protein_relation_v3/domain_All_teddb_SpCas9_filter.csv
+  - Task2
+    - Dali_results/dali_results.csv
+    - Dali_results/dali_10_results_pro.csv
+    - Dali_results/Target_Dali_domain_10/, Dali_results/Query_Dali_domain_10/
+    - Dali_results/FS_results/All_fstm_results.csv
+    - Dali_results/dali_10_refined_results.csv
+  - Task4 (MLP Inference)
+    - .../output/mlp_inference/final_sorted_winrates.csv
+  - Task5 (Transformer Training)
+    - .../model_weights/transformer_train/<best_model_filename>
+  - Task6 (Transformer Inference)
+    - .../output/transformer_inference/final_sorted_winrates.csv
+    - 
+## Optional: Task Control
+
+  - Enable/disable Task1 phases using Boolean flags in config.json (e.g., run_step2_cath_teddb = true/false).
+  - Control Task2 substeps under task2_config (e.g., run_step1_download, run_step2_dali).
+  - RecombRank training and inference are configured through task3_config–task6_config.
+
+## Reproducibility and Best Practices
+
+  - ESM-2 embeddings: Use consistent model and dimension (e.g., 1280-dim), with standardized pooling and site alignment.
+
+  - Random seed: Set a fixed seed (e.g., set_seed(42)) for reproducible results.
+  - Naming consistency: Match best_model_filename and model_weight between training/inference.
+  - Cache reuse: Reuse embedding_cache.pt for faster subsequent inference.
+  - External tool paths: Always provide absolute paths if not available in PATH.
 
 
-SMAL-DR operates in six main stages:
 
 - **Task 1 – Structural Fold Mining (Database Exploration)**  
   In this stage, the pipeline mines structural folds from the TED database to identify and classify diverse HNH-like domains relevant to Cas9 engineering.  
@@ -249,6 +289,7 @@ Processed Data:
 Processed protein and domain data files from the structural alignment and domain identification steps.
 
 Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
+
 
 
 
