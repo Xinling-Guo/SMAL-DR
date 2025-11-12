@@ -122,23 +122,23 @@ Ensure Task5 best_model_filename matches Task6 model_weight (e.g., best_model_tr
 
 ## Pipeline Tasks (1–6)
 
-  - Task 1 — Candidate Domain Preparation
-Retrieves and processes candidate domains from TED/CATH/cluster-related sources, downloads structure/sequence files, organizes output directories, and performs structure searches via Foldseek.
+### Task 1 — Candidate Domain Preparation
+  -Retrieves and processes candidate domains from TED/CATH/cluster-related sources, downloads structure/sequence files, organizes output directories, and performs structure searches via Foldseek.
 
-  - Task 2 — DALI Boundary Refinement
-Uses DALI for structure-based alignments between candidate and reference domains, outputs refined domains and structural similarity files.
+### Task 2 — DALI Boundary Refinement
+  -Uses DALI for structure-based alignments between candidate and reference domains, outputs refined domains and structural similarity files.
 
-  - Task 3 — RecombRank (MLP Fusion) Training
-Trains a pairwise ranking model using ESM-2 FSE and CSE embeddings with an MLP-based fusion network and MarginRankingLoss.
+### Task 3 — RecombRank (MLP Fusion) Training
+  -Trains a pairwise ranking model using ESM-2 FSE and CSE embeddings with an MLP-based fusion network and MarginRankingLoss.
 
-  - Task 4 — RecombRank (MLP Fusion) Inference
-Loads pretrained MLP weights, caches embeddings, and produces activity ranking results for unseen variants.
+###  Task 4 — RecombRank (MLP Fusion) Inference
+  -Loads pretrained MLP weights, caches embeddings, and produces activity ranking results for unseen variants.
 
-  - Task 5 — RecombRank (Transformer Fusion) Training
-Uses a Transformer Encoder to fuse FSE and CSE features for ranking-based training.
+### Task 5 — RecombRank (Transformer Fusion) Training
+  -Uses a Transformer Encoder to fuse FSE and CSE features for ranking-based training.
 
-  - Task 6 — RecombRank (Transformer Fusion) Inference
-Loads Transformer weights to infer ranking scores and outputs final predictions.
+### Task 6 — RecombRank (Transformer Fusion) Inference
+  -Loads Transformer weights to infer ranking scores and outputs final predictions.
 
 Tasks 3–6 share the same model logic (RecombRank) and differ only in the FSE+CSE fusion approach (MLP vs Transformer).
 
@@ -249,6 +249,7 @@ Processed Data:
 Processed protein and domain data files from the structural alignment and domain identification steps.
 
 Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
+
 
 
 
