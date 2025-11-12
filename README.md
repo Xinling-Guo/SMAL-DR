@@ -57,7 +57,7 @@ Hardware:
   Foldseek
   (Optional) TM-align
   ESM-2 (embeddings can be precomputed and stored as .npy)
-
+  
 Validated on Ubuntu 22.04, Python 3.9, CUDA 12.6.
 
 ## Installation
@@ -72,6 +72,8 @@ foldseek --version
 # e.g. ensure /path/to/DaliLite.v5/bin contains executable binaries
 ````
 It is recommended to precompute ESM-2 embeddings and specify the corresponding directories in config.json.
+
+Estimated Time: 1-2 hours
 
 ## Data and Directory Structure
 
@@ -148,6 +150,8 @@ Run the integrated pipeline:
 ```bash
 python src/pipeline.py --config data/Cas9_submit/config.json
 ````
+Estimated Time: 3-5 hours
+
 ## Output Files
 
 Typical outputs (may vary based on configuration):
@@ -218,6 +222,7 @@ Authors, Journal/Year, DOI
     -Foldseek
     -DALI (DaliLite v5)
     -TED (The Encyclopedia of Domains)
+
 
 
 
