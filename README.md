@@ -14,31 +14,20 @@ RecombRank: Pairwise ranking model predicting the relative activity of domain re
 
 ## Table of Contents
 
--Overview
+  - Overview
+  - System Requirements
+  - Installation
+  - Data and Directory Structure
+  - Configuration File (config.json)
+  - Pipeline Tasks (1–6)
+  - Demo Execution
+  - Output Files
+  - Optional: Task Control
+  - Reproducibility and Best Practices
+  - Troubleshooting
+  - License and Citation
 
--System Requirements
-
--Installation
-
--Data and Directory Structure
-
--Configuration File (config.json)
-
--Pipeline Tasks (1–6)
-
--Demo Execution
-
--Output Files
-
--Optional: Task Control
-
--Reproducibility and Best Practices
-
--Troubleshooting
-
--License and Citation
-
-Overview
+## Overview
 
 Candidate Domain Collection (Task 1):
 Based on the input configuration, SMAL-DR retrieves and organizes candidate domains related to the target HNH-like domain from TED, CATH, and cluster-based databases. It downloads corresponding structure and sequence files, organizes them for subsequent analysis, and performs structural similarity searches using Foldseek.
@@ -55,10 +44,66 @@ Tasks 5–6: Transformer-based FSE+CSE fusion (training and inference).
 
 Note: RecombRank ranks variants by potential activity, not by recombination compatibility. The structural compatibility aspect is primarily addressed in Task 2 via DALI boundary refinement.
 
-## Pipeline Overview
+## System Requirements
 
-The **SMAL-DR (Structural fold Mining And deep Learning-guided Domain Recombination)** pipeline is a modular and extensible framework designed for protein domain analysis and engineering.  
-It integrates large-scale structural data mining, alignment-based domain refinement, and deep learning-driven activity prediction into a unified workflow.
+OS: Linux
+Python: 3.9
+
+Hardware:
+  CPU capable of all steps
+  GPU recommended (e.g., A100 / RTX3090) for RecombRank Transformer training/inference
+  External Tools (must be available and executable):
+  DALI (DaliLite v5)
+  Foldseek
+  (Optional) TM-align
+  ESM-2 (embeddings can be precomputed and stored as .npy)
+
+Validated on Ubuntu 22.04, Python 3.9, CUDA 12.6.
+
+## Installation
+
+```bash
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Optional: check external tool availability
+foldseek --version
+# DALI check (depending on your installation)
+# e.g. ensure /path/to/DaliLite.v5/bin contains executable binaries
+````
+It is recommended to precompute ESM-2 embeddings and specify the corresponding directories in config.json.
+
+## Data and Directory Structure
+
+```bash
+SMAL-DR/
+├─ src/
+│  ├─ pipeline.py
+│  ├─ PairNet_MLP_train.py              # RecombRank-MLP (training)
+│  ├─ PairNet_MLP_inference.py          # RecombRank-MLP (inference)
+│  ├─ PairNet_Transformer_train.py      # RecombRank-Transformer (training)
+│  ├─ PairNet_Transformer_inference.py  # RecombRank-Transformer (inference)
+│  ├─ utils1.py                         # Task1/structure-related utilities
+│  └─ utils2.py                         # Task2 (DALI) utilities
+├─ data/
+│  └─ Cas9_submit/
+│     ├─ config.json                    # Configuration example
+│     ├─ test.csv                       # Sample input
+│     └─ ... (input/intermediate files for Task1/2)
+├─ requirements.txt
+└─ README.md
+````
+
+
+
+
+
+
+
+
+
+
+
 
 SMAL-DR operates in six main stages:
 
@@ -165,6 +210,7 @@ Processed Data:
 Processed protein and domain data files from the structural alignment and domain identification steps.
 
 Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
+
 
 
 
