@@ -973,19 +973,19 @@ def main(config_path):
     pipeline_task2 = SMALDRTask2(config_path)
     #pipeline_task2.run_task2()
    
-    #............................................... Task3 :  Train PairNet(MLP) by wet-lab data..........................................................................................#
+    #............................................... Task3 :  Train RecombRank PairNet(MLP) by wet-lab data..........................................................................................#
     pipeline_task3 = SMALDRTask3(config_path)
     #pipeline_task3.run_task3()
     
-    #............................................... Task4 :  Inference by PairNet(MLP)..........................................................................................#
+    #............................................... Task4 :  Inference by RecombRank PairNet(MLP)..........................................................................................#
     pipeline_task4 = SMALDRTask4(config_path)
     pipeline_task4.run_task4()
     
-    #............................................... Task3 :  Train PairNet(Transformer) by wet-lab data..........................................................................................#
+    #............................................... Task3 :  Train RecombRank PairNet(Transformer) by wet-lab data..........................................................................................#
     pipeline_task5 = SMALDRTask5(config_path)
     pipeline_task5.run_task5()
     
-    #............................................... Task4 :  Inference by PairNet(Transformer)..........................................................................................#
+    #............................................... Task4 :  Inference by RecombRank PairNet(Transformer)..........................................................................................#
     pipeline_task6 = SMALDRTask6(config_path)
     pipeline_task6.run_task6()
     
