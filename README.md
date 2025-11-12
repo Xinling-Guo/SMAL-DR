@@ -11,6 +11,50 @@ CSE: Catalytic-Site Embedding — ESM-2 embeddings extracted from aligned cataly
 
 RecombRank: Pairwise ranking model predicting the relative activity of domain recombination variants (implemented in code as PairNet_*).
 
+
+## Table of Contents
+
+Overview
+
+System Requirements
+
+Installation
+
+Data and Directory Structure
+
+Configuration File (config.json)
+
+Pipeline Tasks (1–6)
+
+Demo Execution
+
+Output Files
+
+Optional: Task Control
+
+Reproducibility and Best Practices
+
+Troubleshooting
+
+License and Citation
+
+Overview
+
+Candidate Domain Collection (Task 1):
+Based on the input configuration, SMAL-DR retrieves and organizes candidate domains related to the target HNH-like domain from TED, CATH, and cluster-based databases. It downloads corresponding structure and sequence files, organizes them for subsequent analysis, and performs structural similarity searches using Foldseek.
+
+Boundary Refinement (Task 2):
+Structural alignments are conducted using DALI between candidate and reference domains to refine boundary positions. The outputs include refined domain boundaries, split structures, and similarity result files.
+
+Potential Activity Ranking (Tasks 3–6):
+Using ESM-2 embeddings (FSE + CSE), RecombRank performs pairwise ranking training and inference:
+
+Tasks 3–4: MLP-based FSE+CSE fusion (training and inference).
+
+Tasks 5–6: Transformer-based FSE+CSE fusion (training and inference).
+
+Note: RecombRank ranks variants by potential activity, not by recombination compatibility. The structural compatibility aspect is primarily addressed in Task 2 via DALI boundary refinement.
+
 ## Pipeline Overview
 
 The **SMAL-DR (Structural fold Mining And deep Learning-guided Domain Recombination)** pipeline is a modular and extensible framework designed for protein domain analysis and engineering.  
@@ -121,6 +165,7 @@ Processed Data:
 Processed protein and domain data files from the structural alignment and domain identification steps.
 
 Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
+
 
 
 
