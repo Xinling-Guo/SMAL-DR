@@ -93,11 +93,32 @@ SMAL-DR/
 ├─ requirements.txt
 └─ README.md
 ````
+For RecombRank inference (task4_config / task6_config)
+  - main_dir: directory containing per-variant .npy ESM-2 embeddings.
+  - embeddings_dir: aggregated ESM-2 embedding directory (e.g., Esm2Embedding-sp-1280).
+  - json_path: JSON mapping variant IDs and feature positions (e.g., active_numbers).
+  - cache_path: cache file (embedding_cache.pt) automatically generated during first inference.
 
+## Configuration File (config.json)
 
-
-
-
+Key fields are summarized below:
+### Global and Input Settings
+  - work_dir: root working directory (absolute path recommended).
+  - proteins: list defining the target protein (e.g., Cas9/HNH).
+  - input_files: paths to required input files for Tasks 1–2 (e.g., true_hnh_ted_info, ted_domain_cath_info, wt_domain_dir).
+### Control Flags (Task 1)
+  - Boolean switches: run_step0, run_step1, run_step2_*, run_step3_*, run_data_processing.
+### External Tools
+  - foldseek_binary_path
+  - Under task2_config: dali_bin_path, dali_work_dir, import/export directories, and filenames.
+### RecombRank (Training & Inference)
+  - Tasks 3/4 (MLP)
+    - task3_config: data paths, hyperparameters, and model file names.
+    - task4_config: inference paths (main_dir, output_dir, model_weight, etc.).
+  - Tasks 5/6 (Transformer)
+    - task5_config: data paths, hyperparameters, model save directory, and filename.
+    - task6_config: inference paths and output file.
+Ensure Task5 best_model_filename matches Task6 model_weight (e.g., best_model_transformer.pth).
 
 
 
@@ -210,6 +231,7 @@ Processed Data:
 Processed protein and domain data files from the structural alignment and domain identification steps.
 
 Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
+
 
 
 
