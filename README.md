@@ -1,6 +1,15 @@
 # SMAL-DR: Structural fold mining-and deep learning-guided domain recombination
 
-This repository contains the code for a comprehensive pipeline designed to process protein domain data using various tasks. The pipeline integrates sequence analysis, domain boundary detection, and deep learning models (MLP and Transformer) for protein data training, and inference.
+SMAL-DR is an integrated pipeline designed to collect candidate domains related to a target protein from large-scale domain resources, refine their structural boundaries, and predict the potential activity of recombined variants using RecombRank, a pairwise ranking model for few-shot learning.
+The workflow includes database mining and preparation (Task 1), DALI-based domain boundary refinement (Task 2), and ESM-2 embedding–based RecombRank training and inference (Tasks 3–6).
+
+Terminology
+
+FSE: Full-Sequence Embedding — averaged ESM-2 embeddings of the full protein sequence (typically 1280 dimensions).
+
+CSE: Catalytic-Site Embedding — ESM-2 embeddings extracted from aligned catalytic site positions.
+
+RecombRank: Pairwise ranking model predicting the relative activity of domain recombination variants (implemented in code as PairNet_*).
 
 ## Pipeline Overview
 
@@ -112,6 +121,7 @@ Processed Data:
 Processed protein and domain data files from the structural alignment and domain identification steps.
 
 Example: If you process protein sequences, results will be saved in specific subdirectories for each task, including processed PDB files, domain information, and results of structural similarity analysis.
+
 
 
 
