@@ -88,10 +88,12 @@ SMAL-DR/
 │  ├─ utils1.py                         # Task1/structure-related utilities
 │  └─ utils2.py                         # Task2 (DALI) utilities
 ├─ data/
-│  └─ Cas9_submit/
-│     ├─ config.json                    # Configuration example
-│     ├─ test.csv                       # Sample input
-│     └─ ... (input/intermediate files for Task1/2)
+│  ├─ All_wet_ID.xlsx
+│  ├─ config.json     
+│  ├─ HNH_TED_info.xlsx
+│  └─ HNH_trueSpcas9/
+│     └─ Q99ZW2_774-900_HNH.pdb
+│  
 ├─ requirements.txt
 └─ README.md
 ````
@@ -222,6 +224,7 @@ Authors, Journal/Year, DOI
     -Foldseek
     -DALI (DaliLite v5)
     -TED (The Encyclopedia of Domains)
+
 
 
 
