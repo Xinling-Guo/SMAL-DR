@@ -18,17 +18,17 @@ import subprocess
 from Bio import pairwise2
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures import ThreadPoolExecutor, as_completed
-# 设置日志
+# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 MAX_RETRIES = 5
-RETRY_DELAY = 5  # 延迟时间，单位：秒
+RETRY_DELAY = 5  # Delay time in seconds
 TED_info_URL =  "https://ted.cathdb.info/api/v1"
 
 def create_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 503, 504)):
-    """创建带有重试机制的会话"""
+    """Create a session with retry mechanism"""
     session = requests.Session()
     retry = Retry(
         total=retries,
@@ -43,7 +43,7 @@ def create_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=
     return session
 
 def download_uniprot_data_pages(ipr_id, output_file, max_retries=3, delay=2):
-    """下载UniProt数据，带有重试机制"""
+    """Download UniProt data with retry mechanism"""
     base_url = f"https://rest.uniprot.org/uniprotkb/search?query={ipr_id}+AND+reviewed:true&format=tsv&fields=accession,id,protein_name,cc_domain,ft_domain,organism_name,length&size=500"
     
     session = create_session_with_retries(retries=max_retries)
@@ -64,7 +64,7 @@ def download_uniprot_data_pages(ipr_id, output_file, max_retries=3, delay=2):
                             break
                         f.write(data)
                         
-                        # 检查是否有下一页
+                        # Check if there is next page
                         link_header = response.headers.get('Link')
                         if link_header and 'rel="next"' in link_header:
                             next_page_url = link_header.split(';')[0].strip('<>')
@@ -83,7 +83,7 @@ def download_uniprot_data_pages(ipr_id, output_file, max_retries=3, delay=2):
             if attempt < max_retries:
                 logger.info(f"Retrying in {delay} seconds...")
                 time.sleep(delay)
-                delay *= 2  # 指数退避
+                delay *= 2  # Exponential backoff
             else:
                 logger.error(f"All {max_retries} attempts failed for {ipr_id}")
                 return False
@@ -94,7 +94,7 @@ def download_uniprot_data_pages(ipr_id, output_file, max_retries=3, delay=2):
     return False
 
 def download_interpro_data(ipr_id, output_file, max_retries=3, delay=2):
-    """下载InterPro数据，带有重试机制"""
+    """Download InterPro data with retry mechanism"""
     url = f"https://www.ebi.ac.uk/interpro/api/protein/reviewed/entry/pfam/{ipr_id}/?page_size=200"
     
     session = create_session_with_retries(retries=max_retries)
@@ -108,7 +108,7 @@ def download_interpro_data(ipr_id, output_file, max_retries=3, delay=2):
             if response.status_code == 200:
                 data = response.json()
                 
-                # 解析数据（保持原有逻辑）
+                # Parse data (keep original logic)
                 extracted_data = []
                 for result in data['results']:
                     protein_info = {
@@ -133,7 +133,7 @@ def download_interpro_data(ipr_id, output_file, max_retries=3, delay=2):
                     
                     extracted_data.append(protein_info)
                 
-                # 保存到TSV文件
+                # Save to TSV file
                 with open(output_file, 'w', newline='', encoding='utf-8') as tsvfile:
                     writer = csv.writer(tsvfile, delimiter='\t', quoting=csv.QUOTE_NONE, escapechar='\\')
                     writer.writerow(['Accession', 'Protein Name', 'Organism', 'Length', 'Domain Accession', 'Start', 'End', 'Model', 'Score'])
@@ -182,7 +182,7 @@ def download_interpro_data(ipr_id, output_file, max_retries=3, delay=2):
     
     return False
 
-# 在你的主函数中调用时，可以这样使用：
+
 def get_true_label_pdb_and_domain(ipr_ids, ipr_names, output_dir, keyword):
     """优化版本的主函数"""
     domain_names = ["REC", "NUC", "Bridge", "RuvC", "HNH", "PI", "BH"] 
@@ -193,25 +193,25 @@ def get_true_label_pdb_and_domain(ipr_ids, ipr_names, output_dir, keyword):
         output_file_un = os.path.join(directory, f"uniprot_{ipr_names[i]}_{ipr_ids[i]}.tsv")
         output_file_in = os.path.join(directory, f"interpro_{ipr_names[i]}_{ipr_ids[i]}.tsv")
         
-        # 下载UniProt数据（带重试）
+        # Download UniProt data (with retry)
         success_uniprot = download_uniprot_data_pages(ipr_ids[i], output_file_un, max_retries=3, delay=2)
         if not success_uniprot:
             logger.error(f"Failed to download UniProt data for {ipr_ids[i]}")
             continue
         
-        # 下载InterPro数据（带重试）
+        # Download InterPro data (with retry)
         success_interpro = download_interpro_data(ipr_ids[i], output_file_in, max_retries=3, delay=2)
         if not success_interpro:
             logger.error(f"Failed to download InterPro data for {ipr_ids[i]}")
             continue
         
-        # 短暂暂停，避免请求过于频繁
+        # Brief pause to avoid too frequent requests
         time.sleep(1)
     
-    # 解析并合并所有 UniProt 数据
+    # Parse and merge all UniProt data
     output_file = os.path.join(directory, "uniprot_all_domains.tsv")
     unique_file = os.path.join(directory, "uniprot_unique_domains.tsv")
-    # 如果已经得到了uniprot和interprt的信息和domain信息，则不需要再解析
+    # If uniprot and interpro information and domain information are already obtained, no need to parse again
     parse_uniprot_tsv_files(directory, output_file)
     parse_interpro_tsv_files(directory, output_file)
     uniprot_domain_data(output_file, unique_file, keyword,domain_names)
@@ -223,25 +223,25 @@ def get_true_label_pdb_and_domain(ipr_ids, ipr_names, output_dir, keyword):
 def extract_cc_domain_ranges(text):
     domain_names = ["REC", "NUC", "Bridge", "RuvC", "HNH", "PI", "BH"]
     cc_range_pattern = re.compile(r"(\d+-\d+)")
-    # 更新正则表达式，支持提取多个区间
+    # Update regex pattern to support extracting multiple ranges
     cc_domain_pattern = re.compile(
         r"(?P<domain>{})(.*?)(?=\b(?:{}|$))".format("|".join(domain_names), "|".join(domain_names))
     )
     if not pd.isna(text):
         extracted_domains = []
         
-        # 匹配功能域和它们的区间段
+        # Match domains and their range segments
         domain_matches = cc_domain_pattern.finditer(text)
         
         for domain_match in domain_matches:
             domain_name = domain_match.group('domain')
             domain_content = domain_match.group(0)
             
-            # 匹配所有数字-数字的组合
+            # Match all number-number combinations
             ranges = cc_range_pattern.findall(domain_content)
             
             if ranges:
-                # 将数字区间组合为字符串并与功能域名称关联
+                # Combine number ranges as string and associate with domain name
                 range_str = "_".join(ranges)
                 extracted_domains.append(f"{domain_name}:{range_str}")
         
@@ -250,8 +250,8 @@ def extract_cc_domain_ranges(text):
         return ";"
 def get_cif_pdb(id_info_file, key,output_dir):
     id_info_df = pd.read_csv(id_info_file)
-    pdb_ids = id_info_df['PDB ID'].tolist()  # 获取所有的 PDB ID
-    protein_ids = id_info_df['UniProt ID'].tolist()  # 获取所有的 UniProt ID
+    pdb_ids = id_info_df['PDB ID'].tolist() 
+    protein_ids = id_info_df['UniProt ID'].tolist() 
     
     pdb_dir = os.path.join(output_dir, "pdb_data")
     cif_dir = os.path.join(output_dir, "cif_data")
@@ -268,22 +268,22 @@ def get_cif_pdb(id_info_file, key,output_dir):
         print(f"Processing {str(id_i)}: {protein_id}...")
         id_i += 1
         
-        # 如果对应的 PDB ID 不是 None，尝试从 PDB 下载
+        
         if pd.notna(pdb_id):
             source = download_pdb_structure(pdb_id, protein_id, pdb_dir, cif_dir)
         else:
-            source = None  # 先将 source 初始化为 None，以便后续检查
+            source = None  
 
-        # 如果 PDB 没有数据，尝试从 AlphaFold 下载
+        
         if not source:
             source = download_alphafold_structure(protein_id, pdb_dir, cif_dir)
         
-        # 如果两个地方都没有数据，标记为"Not Found"
+       
         if not source:
             source = "Not Found"
             print(f"!!!!!!!!Not Found {str(id_i)}: {protein_id}...")
         
-        # 保存结果
+       
         results.append({
             "UniProt ID": protein_id,
             "PDB ID": pdb_id,
@@ -295,72 +295,60 @@ def get_cif_pdb(id_info_file, key,output_dir):
 def parse_uniprot_tsv_files(directory, output_file):
     all_data = []
 
-    # 遍历文件夹中的每个文件
+    
     for filename in os.listdir(directory):
-        # 检查文件是否以 "uniprot" 开头并且以 ".tsv" 结尾
         if filename.endswith(".tsv") and filename.startswith("uniprot"):
             file_path = os.path.join(directory, filename)
             print(f"Processing file: {filename}")
-            
-            # 读取TSV文件
+
             df = pd.read_csv(file_path, sep='\t')
-            
-            # 提取Domain [CC] 和 Domain [FT]的功能域及残基编号
             df['Domain [CC] Extracted'] = df['Domain [CC]'].apply(extract_cc_domain_ranges)
             df['Domain [FT] Extracted'] = df['Domain [FT]'].apply(extract_ft_residues)
-            
-            # 增加文件名列
-            df['File Name'] = filename
-            
-            # 将结果添加到总数据中
-            all_data.append(df)
     
-    # 合并所有数据并保存为新的文件
+            df['File Name'] = filename
+       
+            all_data.append(df)
+
     result_df = pd.concat(all_data, ignore_index=True)
     
-    # 只保留需要的列并保存到输出文件
     result_df.to_csv(output_file, sep='\t', index=False, quoting=csv.QUOTE_NONE, escapechar='\\')
     
 
-# 提取Domain [FT]的功能域和残基区间
 def extract_ft_residues(text):
     residue_pattern_ft = re.compile(r"DOMAIN\s+(\d+)\.\.(\d+);\s*/note=\"(.*?)\"", re.ASCII)
     if pd.isnull(text):
         return ""
-    
-    # 查找符合 "DOMAIN x..y" 和功能域的内容
+
     matches = residue_pattern_ft.findall(text)
     if matches:
         extracted_domains = []
         for match in matches:
             start, end, domain = match
-            domain = domain.split()[0]  # 提取功能域名称
+            domain = domain.split()[0]  
             extracted_domains.append(f"{domain}:{start}-{end}")
         return ";".join(extracted_domains)
     return ""
    
 def uniprot_domain_data(input_file, output_file,keyword,domain_names):
     """
-    处理蛋白质ID数据，合并相同蛋白质ID下的功能域信息，并生成新的TSV文件。
+    Process protein ID data, merge domain information under same protein ID, and generate new TSV file.
 
-    参数：
-    input_file: 输入的TSV文件路径
-    output_file: 输出的TSV文件路径
+    Parameters:
+    input_file: Input TSV file path
+    output_file: Output TSV file path
     """
     
-    # 读取数据文件
     df = pd.read_csv(input_file, sep='\t')
 
-    # 新增存储列
+    
     df['Domain_CC_Combined'] = ''
     df['Domain_FT_Combined'] = ''
     df['Domain_CC_Different'] = ''
     df['Domain_FT_Different'] = ''
 
-    # 按蛋白质ID分组
     grouped = df.groupby('Entry')
     unique_entries = []
-    # 分别处理Domain [CC] Extracted和Domain [FT] Extracted
+    
     for name, group in grouped:
         entry_name = group.iloc[0]["Entry Name"]
         protein_name = group.iloc[0]["Protein names"]
@@ -368,21 +356,20 @@ def uniprot_domain_data(input_file, output_file,keyword,domain_names):
             combined_cc, different_cc = combine_domains(group, 'Domain [CC] Extracted', 'File Name',domain_names)
             combined_ft, different_ft = combine_domains(group, 'Domain [FT] Extracted', 'File Name', domain_names)
 
-            # 保留唯一的 entry 数据
+            
             first_row = group.iloc[0].copy()
             first_row['Domain_CC_Combined'] = combined_cc
             first_row['Domain_FT_Combined'] = combined_ft
             first_row['Domain_CC_Different'] = different_cc
             first_row['Domain_FT_Different'] = different_ft
 
-            # 添加到结果列表
             unique_entries.append(first_row)
-    # 创建新的DataFrame，保存唯一的Entry
+
     result_df = pd.DataFrame(unique_entries)
-    # 保存为新的TSV文件
     result_df.to_csv(output_file, sep='\t', index=False)
 
     print(f"Processing complete. Output saved to {output_file}")
+    
 def combine_domains(group, domain_col, file_col,domain_names):
     domain_dict = {}
     if group['Entry'].iloc[0] == 'Q99ZW2':
@@ -393,7 +380,7 @@ def combine_domains(group, domain_col, file_col,domain_names):
         else:
             domains = row[domain_col].split(';')
             for domain in domains:
-                if ':' in domain:  # 过滤不符合格式的域
+                if ':' in domain:  
                     domain_name, domain_range = domain.split(':')
                     if domain_name in domain_names:
                         if domain_name not in domain_dict:
@@ -415,7 +402,7 @@ def combine_domains(group, domain_col, file_col,domain_names):
 
 def get_uniprot_details(uniprot_ids,save_dir):
     
-    os.makedirs(save_dir, exist_ok=True)  # 创建保存目录（如果不存在）
+    os.makedirs(save_dir, exist_ok=True) 
     base_url_unisave = "https://rest.uniprot.org/unisave/"
     for uniprot_id in uniprot_ids:
         txt_url = f"{base_url_unisave}{uniprot_id}?format=txt"
@@ -423,26 +410,23 @@ def get_uniprot_details(uniprot_ids,save_dir):
 
         if response.status_code == 200:
             lines = response.text.splitlines()
-            file_path = os.path.join(save_dir, f"{uniprot_id}_uniprot_details.txt")  # 文件路径
+            file_path = os.path.join(save_dir, f"{uniprot_id}_uniprot_details.txt") 
             with open(file_path, 'w') as file:
-                file.write("\n".join(lines))  # 保存所有行到文件
+                file.write("\n".join(lines))  
             print(f"Saved data for {uniprot_id} to {file_path}")
         else:
             print(f"Error fetching data for UniProt ID {uniprot_id}: {response.status_code}")
 
 def get_pdb_info_from_uniprot(uniprot_ids, uniprot_details_dir,csv_file_path):
-    results = []  # 用于存储每个 UniProt ID 的结果
+    results = [] 
 
     for uniprot_id in uniprot_ids:
         file_path = os.path.join(uniprot_details_dir, f"{uniprot_id}_uniprot_details.txt")
                 
-        # 检查文件是否存在
         if not os.path.exists(file_path):
             print(f"File not found for UniProt ID {uniprot_id}: {file_path}")
             results.append((uniprot_id, None, "File not found"))
             continue
-
-    # 将结果写入 CSV 文件
 
         with open(file_path, 'r') as file:
             lines = file.readlines()
@@ -452,88 +436,82 @@ def get_pdb_info_from_uniprot(uniprot_ids, uniprot_details_dir,csv_file_path):
             for line in lines:
                 if "PDB" in line:
                     if "X-ray" in line:
-                        # 提取 PDB ID 和描述
-                        pdb_id = line.split(';')[1].strip()  # 获取 PDB ID
-                        description = line.strip()  # 获取整行作为描述
-                        break  # 找到后退出循环
+                        pdb_id = line.split(';')[1].strip()  
+                        description = line.strip()  
+                        breakpoint
                     elif "NMR" in line and not pdb_id:
-                        # 如果没有找到 X-ray，检查 NMR
-                        pdb_id = line.split(';')[1].strip()   # 获取 PDB ID
-                        description = line.strip()  # 获取整行作为描述
+                        pdb_id = line.split(';')[1].strip()   
+                        description = line.strip()  
 
-            # 添加结果到列表
             if pdb_id:
                 results.append((uniprot_id, pdb_id, description))
             else:
                 results.append((uniprot_id, None, None))
-            
-        # 将当前结果追加到 CSV 文件
+
             df = pd.DataFrame([results[-1]], columns=["UniProt ID", "PDB ID", "Description"])
             df.to_csv(csv_file_path, mode='a', header=not os.path.exists(csv_file_path), index=False)
 
     return results
 
 def parse_interpro_tsv_files(directory, output_file):
-    write_header = not os.path.exists(output_file)  # 如果文件已存在，则不写入表头
+    write_header = not os.path.exists(output_file)  # If file exists, don't write header
 
-    # 遍历文件夹中的每个文件
+    # Traverse each file in the folder
     for filename in os.listdir(directory):
-        # 检查文件是否以 "interpro" 开头并且以 ".tsv" 结尾
+        # Check if file starts with "interpro" and ends with ".tsv"
         if filename.endswith(".tsv") and filename.startswith("interpro"):
             file_path = os.path.join(directory, filename)
             print(f"Processing file: {filename}")
-            # 如果文件为空，跳过并删除文件
+            # If file is empty, skip and delete file
             if os.path.getsize(file_path) == 0:
                 print(f"Skipping and deleting empty file: {filename}")
                 os.remove(file_path)
                 continue
-            # 读取TSV文件
+            # Read TSV file
             df = pd.read_csv(file_path, sep='\t')
             domain_str = file_path.split('/')[-1].split('_')[2]
-            # 生成 'Domain [CC] Extracted' 列，格式为 'Domain Name':'Domain Start-End'
+            # Generate 'Domain [CC] Extracted' column, format as 'Domain Name':'Domain Start-End'
             df['Domain [CC] Extracted'] = df.apply(lambda row: f"{domain_str}:{row['Start']}-{row['End']}", axis=1)
             
-            # 创建一个新的DataFrame，匹配到所需格式
+            # Create new DataFrame matching required format
             result_df = pd.DataFrame({
-                'Entry': df['Accession'],  # 对应 Entry
-                'Entry Name': df['Protein Name'],  # 对应 Entry Name
-                'Protein names': '',  # 空列
-                'Domain [CC]': '',  # 空列
-                'Domain [FT]': '',  # 空列
-                'Organism': '',  # 空列
-                'Length': '',  # 空列
-                'Domain [CC] Extracted': df['Domain [CC] Extracted'],  # 提取的功能域信息
-                'Domain [FT] Extracted': '',  # 空列
-                'File Name': filename  # 文件名
+                'Entry': df['Accession'],  # Corresponds to Entry
+                'Entry Name': df['Protein Name'],  # Corresponds to Entry Name
+                'Protein names': '',  # Empty column
+                'Domain [CC]': '',  # Empty column
+                'Domain [FT]': '',  # Empty column
+                'Organism': '',  # Empty column
+                'Length': '',  # Empty column
+                'Domain [CC] Extracted': df['Domain [CC] Extracted'],  # Extracted domain information
+                'Domain [FT] Extracted': '',  # Empty column
+                'File Name': filename  # Filename
             })
             
-            # 追加数据到输出文件，设置 mode='a' 和 header=write_header
+            # Append data to output file, set mode='a' and header=write_header
             result_df.to_csv(output_file, sep='\t', index=False, mode='a', header=write_header, quoting=csv.QUOTE_NONE, escapechar='\\')
             
-            # 之后不再写入表头
+            # Don't write header afterwards
             write_header = False
 def ensure_file(file_path):
-    """确保文件存在，如果文件不存在则创建一个空文件"""
+    """Ensure file exists, create empty file if it doesn't exist"""
     if not os.path.exists(file_path):
         with open(file_path, 'w') as f:
-            pass  # 创建一个空文件
+            pass  # Create an empty file
         print(f"File created: {file_path}")
     else:
         print(f"File already exists: {file_path}")
+        
 def ensure_dir(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
-        
-        
-        
-        
+           
 
 # step1 function
 
 
 def fetch_interpro_description(interpro_id):
     """
-    根据 InterPro ID 获取描述信息
+    Get description information based on InterPro ID
     """
     try:
         url = f"https://www.ebi.ac.uk/interpro/api/entry/interpro/{interpro_id}"
@@ -554,28 +532,28 @@ def fetch_interpro_description(interpro_id):
 
 def get_latest_uniprot_version_by_scraping(uniprot_id):
     """
-    抓取 UniProt history 页面，解析出所有版本号，返回最大的那个。
+    Scrape UniProt history page, parse all version numbers, return the largest one.
     
     """
     url = f"https://rest.uniprot.org/unisave/{uniprot_id}?format=json"
     try:
         r = session.get(url, timeout=10)
-        r.raise_for_status()  # 如果请求返回错误状态码，会抛出 HTTPError
+        r.raise_for_status()  # If request returns error status code, will throw HTTPError
         data = r.json()
-        # 提取最新版本号
+        # Extract latest version number
         latest_version = max(entry['entryVersion'] for entry in data['results'])
         return latest_version
 
     except (requests.RequestException, ValueError, KeyError) as e:
-        # 捕获请求异常、JSON 解析错误或缺少 'results' 字段等问题
+        # Catch request exceptions, JSON parsing errors, or missing 'results' field issues
         print(f"Error fetching or parsing data for {uniprot_id}: {e}")
-        return None  # 如果出错，返回 None
+        return None  # If error occurs, return None
 def fetch_details_for_uniprot_id(uniprot_id, pdb_id=None, max_versions=20):
     """
-    只负责获取 UniProt 原始 TXT，不做任何后续处理
+    Only responsible for getting UniProt original TXT, no subsequent processing
     """
 
-    # 方法1：REST TXT
+    # Method 1: REST TXT
     txt_url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}?format=txt"
     try:
         r = session.get(txt_url, timeout=10)
@@ -586,11 +564,11 @@ def fetch_details_for_uniprot_id(uniprot_id, pdb_id=None, max_versions=20):
     except requests.RequestException:
         pass
     time.sleep(1)
-    # 方法2 先调用方法1获取最新版本
+    # Method 2: First call method 1 to get latest version
     latest_version = get_latest_uniprot_version_by_scraping(uniprot_id)
     time.sleep(1)
     if latest_version:
-        # 尝试下载最新版本
+        # Try to download latest version
         url = f"https://rest.uniprot.org/unisave/{uniprot_id}?format=txt&versions={latest_version}"
         try:
             r = session.get(url, timeout=10)
@@ -599,11 +577,11 @@ def fetch_details_for_uniprot_id(uniprot_id, pdb_id=None, max_versions=20):
                 txt = str(latest_version)+"\n"+url + "\n"+ txt
                 return txt
             else:
-                print(f"[Info] 版本 {latest_version} 下载失败，状态码：{r.status_code}")
+                print(f"[Info] Version {latest_version} download failed, status code: {r.status_code}")
         except requests.RequestException as e:
-            print(f"[Warning] {uniprot_id} 下载版本 {latest_version} 时出错：{e}")
+            print(f"[Warning] {uniprot_id} error downloading version {latest_version}: {e}")
 
-    # 方法2：历史版本回退
+    # Method 2: Historical version fallback
     for version in range(latest_version, 0, -1):
         time.sleep(1)
         url = f"https://rest.uniprot.org/unisave/{uniprot_id}?format=txt&versions={version}"
@@ -616,61 +594,62 @@ def fetch_details_for_uniprot_id(uniprot_id, pdb_id=None, max_versions=20):
         except requests.RequestException:
             continue
 
-    raise RuntimeError(f"failed 无法获取 UniProt ID {uniprot_id} 的任何数据")
+    raise RuntimeError(f"failed Unable to get any data for UniProt ID {uniprot_id}")
 import glob     
+
 def merge_predict_details(csv_path: str) -> str:
     """
-    对指定的主 CSV 文件，寻找同目录下具有相同前缀但后缀带数字的其他 CSV，
-    将它们中非空的 details 填入主表的 details 空值处，并保存为新文件。
+    For specified main CSV file, find other CSVs in same directory with same prefix but numbered suffix,
+    fill empty details in main table with non-empty details from them, and save as new file.
 
-    参数:
-        csv_path: 主 CSV 文件的完整路径
+    Parameters:
+        csv_path: Complete path of main CSV file
 
-    返回:
-        新 CSV 文件的路径
+    Returns:
+        Path of new CSV file
     """
-    # 1. 读取主表
+    # 1. Read main table
     df_main = pd.read_csv(csv_path, dtype=str)
     if 'pdb_id' not in df_main.columns or 'details' not in df_main.columns:
-        raise ValueError("输入的 CSV 必须包含 'pdb_id' 和 'details' 列")
+        raise ValueError("Input CSV must contain 'pdb_id' and 'details' columns")
     df_main.set_index('pdb_id', inplace=True)
 
-    # 2. 构造同目录下的通配模式，排除自己
+    # 2. Construct wildcard pattern in same directory, exclude self
     dirpath, filename = os.path.split(csv_path)
     stem, ext = os.path.splitext(filename)
-    # 匹配以主文件名前缀开头、后面任意字符再以 .csv 结尾
+    # Match files starting with main file prefix, followed by any characters then ending with .csv
     pattern = os.path.join(dirpath, f"{stem}*.csv")
     candidates = glob.glob(pattern)
-    # 不要把主文件自己也当作候选
+    # Don't include main file itself as candidate
     other_files = [f for f in candidates if os.path.abspath(f) != os.path.abspath(csv_path)]
 
-    # 3. 逐个读取其他文件，合并 details
+    # 3. Read other files one by one, merge details
     for other in sorted(other_files):
         df_i = pd.read_csv(other, dtype=str)
         if 'pdb_id' not in df_i.columns or 'details' not in df_i.columns:
-            continue  # 若缺列，则跳过
+            continue  # If columns missing, skip
         df_i.set_index('pdb_id', inplace=True)
-        # 用 df_i 中非空的 details 来填充主表
-        # fillna 会按索引自动对齐
+        # Use non-empty details in df_i to fill main table
+        # fillna will automatically align by index
         df_main['details'] = df_main['details'].fillna(df_i['details'])
 
-    # 4. 保存为新的 CSV，文件名加 "_all"
+    # 4. Save as new CSV, filename with "_all"
     new_stem = stem + '_all'
     new_filename = new_stem + ext
     new_path = os.path.join(dirpath, new_filename)
-    # 将索引 pdb_id 重新写入列中
+    # Write index pdb_id back to column
     df_main.reset_index().to_csv(new_path, index=False)
-    print(f"已将合并后的文件保存到：{new_path}")
+    print(f"Merged file saved to: {new_path}")
     return new_path
 
 def fetch_details_for_uniprot(csv2_path, output_csv3,
                               pdb_id=None, max_workers=50,
                               batch_size=500, checkpoint_interval=1000):
     """
-    高并发版本：读取 CSV，针对每行未填 details 的 UniProt ID 并行抓取，
-    并在抓到 TXT 后一次性提取 InterPro 信息并拼接。
+    High concurrency version: Read CSV, parallel fetch for each row with empty details UniProt ID,
+    and extract InterPro information and concatenate after getting TXT.
     """
-    # 全局缓存，避免重复请求 InterPro
+    # Global cache to avoid repeated InterPro requests
     interpro_cache = {}
 
     def fetch_interpro_description_cached(ipr):
@@ -678,18 +657,18 @@ def fetch_details_for_uniprot(csv2_path, output_csv3,
             interpro_cache[ipr] = fetch_interpro_description(ipr)
         return interpro_cache[ipr]
 
-    # 加载数据，只处理 details 为空的行
+    # Load data, only process rows with empty details
     df0 = pd.read_csv(csv2_path)
-    # 如果没有 details 列，就把所有行都选上；否则只选 details 为空的行
+    # If no details column, select all rows; otherwise only select rows with empty details
     if 'details' in df0.columns:
         mask = df0['details'].isna() | (df0['details'] == '')
     else:
-        # 全部为 True，表示全部行都要处理
+        # All True, meaning all rows need processing
         mask = pd.Series(True, index=df0.index)
     df = df0[mask].copy()
     total = len(df)
 
-    # checkpoint 文件
+    # checkpoint file
     checkpoint_file = f"{output_csv3}.checkpoint.json"
     if os.path.exists(checkpoint_file):
         try:
@@ -701,20 +680,20 @@ def fetch_details_for_uniprot(csv2_path, output_csv3,
     else:
         processed = {}
 
-    # 准备任务列表
+    # Prepare task list
     tasks = []
     for idx, row in df.iterrows():
         if str(idx) not in processed:
             try:
-                # target 格式 "xxx-<UniProtID>"
+                # target format "xxx-<UniProtID>"
                 up = str(row['target']).split('-')[1]
                 tasks.append((idx, up))
             except:
-                processed[str(idx)] = ""  # 异常留空
+                processed[str(idx)] = ""  # Exception leaves empty
 
-    # 根据任务数量调整并发
+    # Adjust concurrency based on task count
     workers = min(max_workers, max(1, len(tasks)//2))
-    print(f"要处理 {len(tasks)} 行，使用 {workers} 个 worker")
+    print(f"To process {len(tasks)} rows, using {workers} workers")
 
     lock = threading.Lock()
     processed_count = 0
@@ -731,7 +710,7 @@ def fetch_details_for_uniprot(csv2_path, output_csv3,
         try:
             txt = fetch_details_for_uniprot_id(upid, pdb_id)
 
-            # 提取 InterPro ID 列表，去重
+            # Extract InterPro ID list, deduplicate
             iprs = set(re.findall(r"IPR\d{6}", txt))
             infos = []
             for ipr in iprs:
@@ -739,7 +718,7 @@ def fetch_details_for_uniprot(csv2_path, output_csv3,
                 if name:
                     infos.append(f"{ipr}: {name}")
 
-            # 拼接结果
+            # Concatenate result
             if infos:
                 txt += "\n\n=== InterPro Information ===\n" + "\n".join(infos)
 
@@ -756,27 +735,27 @@ def fetch_details_for_uniprot(csv2_path, output_csv3,
         return idx
 
 
-    # 初始化进度条，总数为所有要处理的行数
-    pbar = tqdm(total=len(tasks), desc="总进度")
+    # Initialize progress bar, total is all rows to process
+    pbar = tqdm(total=len(tasks), desc="Overall progress")
     for i in range(0, len(tasks), batch_size):
         batch = tasks[i:i + batch_size]
-        # 并行提交这一批
+        # Parallel submit this batch
         with ThreadPoolExecutor(max_workers=workers) as ex:
             futures = [ex.submit(process_task, t) for t in batch]
-            # 等待这一批全部完成，但不在这里更新进度条
+            # Wait for this batch to complete, but don't update progress bar here
             for fut in as_completed(futures):
-                fut.result()  # 如有需要，可以捕获异常或获取返回值
+                fut.result()  # Can capture exception or get return value if needed
 
-        # 整个 batch 做完后，一次性更新 pbar
+        # After entire batch done, update pbar once
         pbar.update(len(batch))
-        # 每跑完一个 batch 就存一个检查点
+        # Save checkpoint after each batch
         save_ckpt()
 
     pbar.close()
             
     """       
-    # 并行跑批次
-    pbar = tqdm(total=len(tasks), desc="总进度")
+    # Run batches in parallel
+    pbar = tqdm(total=len(tasks), desc="Overall progress")
     for i in range(0, len(tasks), batch_size):
         batch = tasks[i:i+batch_size]
         with ThreadPoolExecutor(max_workers=workers) as ex:
@@ -785,57 +764,57 @@ def fetch_details_for_uniprot(csv2_path, output_csv3,
         save_ckpt()
     pbar.close()
     """ 
-    # 写回 CSV
+    # Write back to CSV
     df['details'] = [processed.get(str(idx), "") for idx in df.index]
     df0.loc[mask, 'details'] = df['details']
     df0.to_csv(output_csv3, index=False)
 
-    # 清理 checkpoint
+    # Clean up checkpoint
     if error_count == 0 and os.path.exists(checkpoint_file):
         os.remove(checkpoint_file)
 
     elapsed = time.time() - start
-    print(f"完成：{processed_count} 条，失败 {error_count} 条，耗时 {elapsed:.1f} 秒，平均 {(elapsed/processed_count):.2f} 秒/条")
+    print(f"Completed: {processed_count} entries, failed {error_count} entries, time taken {elapsed:.1f} seconds, average {(elapsed/processed_count):.2f} seconds/entry")
 
 
 def append_ref_ted_predition(input_dir: str, csv_ref_path: str, output_dir: str = None, suffix: str = '_with_ref') -> None:
     """
-    遍历指定文件夹中的所有 Excel 和 CSV 文件，将每个文件中的 DataFrame 与参考 CSV 按指定键（pdb_id vs unique_ID）合并，
-    并将选定的参考列追加到原始 DataFrame 中，然后保存为新的文件。
+    Traverse all Excel and CSV files in specified folder, merge each file's DataFrame with reference CSV by specified key (pdb_id vs unique_ID),
+    and append selected reference columns to original DataFrame, then save as new file.
 
-    参数：
-    - input_dir: 包含待处理文件的文件夹路径。
-    - csv_ref_path: 参考 CSV 文件路径，其包含 unique_ID 列和需要追加的字段。
-    - output_dir: 可选，保存结果文件的文件夹。如果为 None，则在 input_dir 下创建一个子文件夹 'output'。
-    - suffix: 可选，保存文件时在文件名后追加的后缀（默认 '_with_ref'）。
+    Parameters:
+    - input_dir: Folder path containing files to process.
+    - csv_ref_path: Reference CSV file path, containing unique_ID column and fields to append.
+    - output_dir: Optional, folder to save result files. If None, create subfolder 'output' under input_dir.
+    - suffix: Optional, suffix to append to filename when saving (default '_with_ref').
 
-    依赖：
+    Dependencies:
     pandas
     """
-    # 读取参考数据
+    # Read reference data
     ref_df = pd.read_csv(csv_ref_path)
     print(csv_ref_path)
     print(ref_df)
-    # 只保留需要追加的列（除 unique_ID 外）
+    # Only keep columns to append (except unique_ID)
     join_key = 'unique_ID'
 
     print('1')
     ref_cols = [c for c in ref_df.columns if c != join_key]
     print(ref_cols)
     print('2')   
-    # 准备输出目录
+    # Prepare output directory
     if output_dir is None:
         output_dir = os.path.join(input_dir, 'output')
     os.makedirs(output_dir, exist_ok=True)
     print('3')
-    # 遍历文件夹中的所有文件
+    # Traverse all files in folder
     for fname in os.listdir(input_dir):
         file_path = os.path.join(input_dir, fname)
         base, ext = os.path.splitext(fname)
         ext = ext.lower()
         print('4')
         if ext in ['.xlsx', '.xls']:
-            # 处理 Excel 文件
+            # Process Excel file
             excel = pd.ExcelFile(file_path)
             
             
@@ -845,26 +824,26 @@ def append_ref_ted_predition(input_dir: str, csv_ref_path: str, output_dir: str 
             )
             for sheet in excel.sheet_names:
                 df = pd.read_excel(excel, sheet_name=sheet, dtype=str)
-                # 重命名 df 的键列以便合并
+                # Rename df key column for merging
                 print('5')
                 df = df.rename(columns={'pdb_id': join_key})
                 print(sheet)
                 print(df)
-                # 合并
+                # Merge
                 merged = df.merge(
                     ref_df[[join_key] + ref_cols],
                     on=join_key,
                     how='left'
                 )
                 print('6')
-                # 恢复列名
+                # Restore column names
                 merged = merged.rename(columns={join_key: 'pdb_id'})
-                # 写入
+                # Write
                 merged.to_excel(writer, sheet_name=sheet, index=False)
             writer.close()
 
         elif ext == '.csv':
-            # 处理 CSV 文件
+            # Process CSV file
             df = pd.read_csv(file_path, dtype=str)
             df = df.rename(columns={'pdb_id': join_key})
             merged = df.merge(
@@ -873,16 +852,16 @@ def append_ref_ted_predition(input_dir: str, csv_ref_path: str, output_dir: str 
                 how='left'
             )
             merged = merged.rename(columns={join_key: 'pdb_id'})
-            # 保存 CSV
+            # Save CSV
             merged.to_csv(
                 os.path.join(output_dir, f"{base}{suffix}.csv"),
                 index=False
             )
         else:
-            # 跳过其他文件类型
+            # Skip other file types
             continue
 def sequence_to_vector(seq, k=3):
-    """将蛋白质序列转换为k-mer频率向量"""
+    """Convert protein sequence to k-mer frequency vector"""
     kmers = [seq[i:i+k] for i in range(len(seq) - k + 1)]
     seq_counter = Counter(kmers)
     vector = np.zeros(len(amino_acids) ** k)
@@ -892,7 +871,7 @@ def sequence_to_vector(seq, k=3):
     return vector
 
 def cosine_similarity(vec1, vec2):
-    """计算两个向量之间的余弦相似性"""
+    """Calculate cosine similarity between two vectors"""
     dot_product = np.dot(vec1, vec2)
     norm1 = np.linalg.norm(vec1)
     norm2 = np.linalg.norm(vec2)
@@ -906,28 +885,28 @@ from difflib import SequenceMatcher
 from Bio.Align import substitution_matrices
 def calculate_protein_sequence_similarity(seq1, seq2):
     """
-    计算两个蛋白质序列之间的相似性，使用BLOSUM62打分矩阵并通过自比对进行归一化
+    Calculate similarity between two protein sequences using BLOSUM62 scoring matrix and normalized by self-alignment
     
     Parameters:
-        seq1 (str): 第一个蛋白质序列
-        seq2 (str): 第二个蛋白质序列
+        seq1 (str): First protein sequence
+        seq2 (str): Second protein sequence
         
     Returns:
-        float: 归一化的相似性分数 (0-1范围)
+        float: Normalized similarity score (0-1 range)
     """
-    # 参数检查
+    # Parameter check
     if not isinstance(seq1, str) or not isinstance(seq2, str):
         return 0.0
         
     if len(seq1) == 0 or len(seq2) == 0:
         return 0.0
     
-    # 加载BLOSUM62矩阵
+    # Load BLOSUM62 matrix
     matrix = substitution_matrices.load("BLOSUM62")
     
     try:
-        # 使用BLOSUM62矩阵进行全局比对
-        # 设置gap_open=-10, gap_extend=-0.5是常用参数
+        # Use BLOSUM62 matrix for global alignment
+        # Setting gap_open=-10, gap_extend=-0.5 are common parameters
         alignments = pairwise2.align.globalds(seq1, seq2, 
                                             matrix, -10, -0.5,
                                             one_alignment_only=True)
@@ -935,10 +914,10 @@ def calculate_protein_sequence_similarity(seq1, seq2):
         if not alignments:
             return 0.0
             
-        # 获取比对分数
+        # Get alignment score
         alignment_score = alignments[0].score
         
-        # 计算自比对分数，用于归一化
+        # Calculate self-alignment scores for normalization
         self_score1 = pairwise2.align.globalds(seq1, seq1, 
                                             matrix, -10, -0.5,
                                             one_alignment_only=True)[0].score
@@ -946,59 +925,59 @@ def calculate_protein_sequence_similarity(seq1, seq2):
                                             matrix, -10, -0.5,
                                             one_alignment_only=True)[0].score
         
-        # 归一化分数 (取两个自比对分数中的较小值进行归一化)
+        # Normalized score (take smaller of two self-alignment scores for normalization)
         normalized_score = alignment_score / min(self_score1, self_score2)
         
-        # 确保分数在0-1范围内
+        # Ensure score in 0-1 range
         normalized_score = max(0.0, min(1.0, normalized_score))
         
         return round(normalized_score, 4)
         
     except Exception as e:
-        print(f"计算序列相似性时出错: {e}")
+        print(f"Error calculating sequence similarity: {e}")
         return 0.0
 
 def convert_cif_to_dssp_parallel(cif_dir, dssp_dir, max_workers=None):
     """
-    将目录中的所有 CIF 文件转换为 DSSP 文件，使用多进程进行并行处理。
+    Convert all CIF files in directory to DSSP files using multi-process parallel processing.
 
     Args:
-        cif_dir (str): CIF 文件所在目录路径。
-        dssp_dir (str): DSSP 输出目录路径。
-        max_workers (int, optional): 最大并行进程数，默认为 None，表示自动选择合适的数量。
+        cif_dir (str): CIF file directory path.
+        dssp_dir (str): DSSP output directory path.
+        max_workers (int, optional): Maximum parallel processes, default None means automatically select appropriate number.
     """
     cif_path = Path(cif_dir)
     dssp_path = Path(dssp_dir)
 
-    # 检查路径是否存在
+    # Check if paths exist
     if not cif_path.exists():
         raise FileNotFoundError(f"CIF directory does not exist: {cif_path}")
     if not dssp_path.exists():
-        dssp_path.mkdir(parents=True, exist_ok=True)  # 创建输出目录
+        dssp_path.mkdir(parents=True, exist_ok=True)  # Create output directory
 
-    # 获取所有 CIF 文件
+    # Get all CIF files
     cif_files = list(cif_path.glob("*.pdb"))
     print(max_workers)
-    # 使用 ProcessPoolExecutor 进行多进程并行处理
+    # Use ProcessPoolExecutor for multi-process parallel processing
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        # 提交所有转换任务
+        # Submit all conversion tasks
         futures = []
         for cif_file in cif_files:
-            base_name = cif_file.stem  # 提取文件名（无扩展名）
+            base_name = cif_file.stem  # Extract filename (without extension)
             output_dssp = dssp_path / f"{base_name}.dssp"
             futures.append(executor.submit(dssp_single, cif_file, output_dssp))
 
-        # 等待任务完成并获取结果
+        # Wait for tasks to complete and get results
         for future in as_completed(futures):
-            future.result()  # 获取每个任务的执行结果，如果失败则抛出异常
+            future.result()  # Get each task's execution result, throw exception if failed
 
 def dssp_single(cif_file, output_dssp):
     """
-    处理单个文件的转换，运行 mkdssp 命令。
+    Process single file conversion, run mkdssp command.
 
     Args:
-        cif_file (Path): 输入的 CIF 文件路径。
-        output_dssp (Path): 输出的 DSSP 文件路径。
+        cif_file (Path): Input CIF file path.
+        output_dssp (Path): Output DSSP file path.
     """
     try:
         subprocess.run(
@@ -1012,27 +991,27 @@ def dssp_single(cif_file, output_dssp):
 
 def convert_cif_to_dssp(cif_dir, dssp_dir):
     """
-    将目录中的所有 CIF 文件转换为 DSSP 文件。
+    Convert all CIF files in directory to DSSP files.
     
     Args:
-        cif_dir (str): CIF 文件所在目录路径。
-        dssp_dir (str): DSSP 输出目录路径。
+        cif_dir (str): CIF file directory path.
+        dssp_dir (str): DSSP output directory path.
     """
     cif_path = Path(cif_dir)
     dssp_path = Path(dssp_dir)
 
-    # 检查路径是否存在
+    # Check if paths exist
     if not cif_path.exists():
         raise FileNotFoundError(f"CIF directory does not exist: {cif_path}")
     if not dssp_path.exists():
-        dssp_path.mkdir(parents=True, exist_ok=True)  # 创建输出目录
+        dssp_path.mkdir(parents=True, exist_ok=True)  # Create output directory
 
-    # 遍历 CIF 文件并转换
+    # Traverse CIF files and convert
     for cif_file in cif_path.glob("*.pdb"):
-        base_name = cif_file.stem  # 提取文件名（无扩展名）
+        base_name = cif_file.stem  # Extract filename (without extension)
         output_dssp = dssp_path / f"{base_name}.dssp"
 
-        # 运行 mkdssp 命令
+        # Run mkdssp command
         try:
             subprocess.run(
                 ["mkdssp", "-i", str(cif_file), "-o", str(output_dssp)],
@@ -1106,27 +1085,27 @@ def move_file_to_OSS(source_path, destination_path):
         print(f"Error moving '{source_path}' to '{destination_path}': {e}")
         
 def replace_subsequence(A, start, end, a):
-    # 如果 A 或 a 为空或 None，则返回空字符串
+    # If A or a is empty or None, return empty string
     if not A or not a:
-        print("A 或 a 为空，返回空")
+        print("A or a is empty, return empty")
         return ""
     
-    # 确保 start 和 end 的范围合法
+    # Ensure start and end ranges are valid
     if start < 0 or end > len(A) or start >= end:
         raise ValueError("Invalid start or end position.")
     
-    # 将 A 分为三部分：替换前的部分、替换的部分和替换后的部分
+    # Split A into three parts: part before replacement, part to replace, and part after replacement
     before = A[:start]
     after = A[end:]
     
-    # 生成新的序列 B，start 到 end 区间由 a 替代
+    # Generate new sequence B, start to end range replaced by a
     B = before + a + after
     
     return B
 
 
 def add_domain_info_to_target_cath_teddb_check(csv1_path, csv2_path, fasta_dict, output_path):
-    # 1. 读取csv1和csv2文件
+    # 1. Read csv1 and csv2 files
     csv1 = pd.read_csv(csv1_path)
     csv2  = pd.read_excel(csv2_path)
     csv2  = csv2.dropna(subset=['chopping_check'])
@@ -1134,18 +1113,18 @@ def add_domain_info_to_target_cath_teddb_check(csv1_path, csv2_path, fasta_dict,
     csv2_dict = csv2_unique.set_index('target')[['chopping', 'chopping_check', 'plddt', 'cath_label']].to_dict(orient='index')
     
     
-    # 3. 一次性读取fasta文件并提取UniProt ID与序列长度
+    # 3. Read fasta file once and extract UniProt ID and sequence length
     #with open(fasta_path, "r") as fasta_in:
     #    fasta_records = list(SeqIO.parse(fasta_in, "fasta"))
     fasta_records = fasta_dict
-    # 将FASTA记录转换为字典，key为UniProt ID，value为序列长度
+    # Convert FASTA records to dictionary, key as UniProt ID, value as sequence length
     uniprot_to_len = {}
     uniprot_info = {}
     uniprot_seq = {}
     for key in fasta_records.keys():
-        # 提取UniProt ID：假设FASTA的ID格式为"tr|X6BLS5|X6BLS5_9HYPH"
+        # Extract UniProt ID: assume FASTA ID format as "tr|X6BLS5|X6BLS5_9HYPH"
         record = fasta_records[key]
-        uniprot_id = record.id.split('|')[1]  # 通过分割获取UniProt ID部分
+        uniprot_id = record.id.split('|')[1]  # Get UniProt ID part by splitting
         info = record.description
         uniprot_to_len[uniprot_id] = len(record.seq)
         uniprot_info[uniprot_id] = info
@@ -1155,16 +1134,16 @@ def add_domain_info_to_target_cath_teddb_check(csv1_path, csv2_path, fasta_dict,
 
 
     
-    # 4. 合并数据到csv1
+    # 4. Merge data to csv1
     def get_additional_info(row):
-        # 从target中提取uniprot_id（假设格式为target-xxxx，取'-'后面的部分）
+        # Extract uniprot_id from target (assume format target-xxxx, take part after '-')
         target = row['target']
         source = row['source']
         target_id = target.split('-')[1]
         source_id = source.split('_')[0]
-        # 1) 查找对应的ted_id信息
+        # 1) Find corresponding ted_id information
         ted_id = "_".join(target.split('_')[:3])
-        # 查找csv2中相关ted_id的行
+        # Find rows with related ted_id in csv2
         if ted_id in csv2_dict:
             chopping = csv2_dict[ted_id]['chopping']
             chopping_check = csv2_dict[ted_id]['chopping_check']
@@ -1174,9 +1153,9 @@ def add_domain_info_to_target_cath_teddb_check(csv1_path, csv2_path, fasta_dict,
 
             
         else:
-            chopping = plddt = cath_label = chopping_check = None  # 如果没有找到ted_id，设置为None
+            chopping = plddt = cath_label = chopping_check = None  # If ted_id not found, set to None
 
-        # 2) 获取UniProt ID的序列长度
+        # 2) Get sequence length for UniProt ID
         target_seq = uniprot_seq.get(target_id, None)
         if len(target_seq)>0:
             start_res, end_res = int(chopping_check.split('-')[0]),int(chopping_check.split('-')[1])
@@ -1184,14 +1163,14 @@ def add_domain_info_to_target_cath_teddb_check(csv1_path, csv2_path, fasta_dict,
         else:
             target_domain_seq = []
             
-        # 2) 获取UniProt ID的序列长度
+        # 2) Get sequence length for UniProt ID
         source_seq = uniprot_seq.get(source_id, None)
         if len(source_seq)>0:
             start_res, end_res =  int(source.split('_')[-2].split('-')[0]),int(source.split('_')[-2].split('-')[1])
             source_domain_seq  = source_seq[start_res-1:end_res]
         else:
             source_domain_seq = []
-        target_len = uniprot_to_len.get(target_id, None)  # 如果没有找到该ID，返回None
+        target_len = uniprot_to_len.get(target_id, None)  # If ID not found, return None
         target_info = uniprot_info.get(target_id, None)
         #if target_len is None:
         #    print(uniprot_id)
@@ -1201,84 +1180,84 @@ def add_domain_info_to_target_cath_teddb_check(csv1_path, csv2_path, fasta_dict,
         assemle_protein_sim = calculate_protein_sequence_similarity(assemble_seq, source_seq)
         return pd.Series([chopping,chopping_check, plddt, cath_label, target_len,target_info,source_domain_seq,target_domain_seq,protein_seq_sim, domain_seq_sim,assemble_seq,assemle_protein_sim,target_seq,source_seq ], index=['chopping', 'chopping_check','plddt', 'cath_label', 'target_len','target_info','source_domain_seq','target_domain_seq','protein_seq_sim','domain_seq_sim','assemble_seq','assemle_protein_sim','target_seq','source_seq'])
     
-    # 5. 对csv1中的每一行应用get_additional_info函数
+    # 5. Apply get_additional_info function to each row in csv1
 
     csv1[['chopping', 'chopping_check','plddt', 'cath_label', 'target_len','target_info','source_domain_seq','target_domain_seq','protein_seq_sim','domain_seq_sim','assemble_seq','assemle_protein_sim','target_seq','source_seq']] = csv1.apply(get_additional_info, axis=1)
     
     
     columns_order = ['source','target', 'FS_weight','TM_weight','Dali_weight','target_info','chopping_check', 'target_len', 'plddt', 'cath_label','source_domain_seq','target_domain_seq','protein_seq_sim','domain_seq_sim','assemble_seq','assemle_protein_sim'] + [col for col in csv1.columns if col not in['source','target', 'FS_weight','TM_weight','Dali_weight','target_info','chopping_check', 'target_len', 'plddt', 'cath_label','source_domain_seq','target_domain_seq','protein_seq_sim','domain_seq_sim','assemble_seq','assemle_protein_sim']]
 
-    # 调整列顺序
+    # Adjust column order
     csv1 = csv1[columns_order]
     
-    # 6. 保存合并后的csv1
+    # 6. Save merged csv1
     csv1.to_csv(output_path, index=False)
-    print(f"输出文件已保存至: {output_path}")
+    print(f"Output file saved to: {output_path}")
 
 
 def add_chopping_check_to_csv(csv_file, excel_file, sheet_name, output_csv):
-    # 读取CSV文件
+    # Read CSV file
     df_csv = pd.read_csv(csv_file)
     
-    # 读取Excel文件中的指定Sheet
+    # Read specified Sheet in Excel file
     df_excel = pd.read_excel(excel_file, sheet_name=sheet_name)
     
-    # 处理 Excel 中的 target 列，将其按"_"拆分去掉最后一部分
+    # Process target column in Excel, split by "_" remove last part
     df_excel['target'] = df_excel['target'].str.split('_').str[:-1].str.join('_')
 
-    # 在合并前直接修改列名，给 FS_weight, TM_weight, Dali_weight 添加 _check 后缀
+    # Before merging, directly rename columns, add _check suffix to FS_weight, TM_weight, Dali_weight
     df_excel = df_excel.rename(columns={
         'FS_weight': 'FS_weight_check',
         'TM_weight': 'TM_weight_check',
         'Dali_weight': 'Dali_weight_check'
     })
 
-    # 通过 source 和 target 两列进行合并，确保只有当两者都匹配时才填充相应列
+    # Merge by source and target columns, ensure only fill corresponding columns when both match
     df_merged = pd.merge(df_csv, df_excel[['source', 'target', 'chopping_check', 'FS_weight_check', 'TM_weight_check', 'Dali_weight_check']],
                          on=['source', 'target'], how='left')
 
-    # 将需要的列放到前面
+    # Move needed columns to front
     cols_order = ['source', 'target', 'chopping', 'chopping_check', 'FS_weight_check', 'TM_weight_check', 'Dali_weight_check'] + [col for col in df_merged.columns if col not in ['source', 'target', 'chopping', 'chopping_check', 'FS_weight_check', 'TM_weight_check', 'Dali_weight_check']]
     df_merged = df_merged[cols_order]
 
-    # 保存合并后的数据为新的CSV文件
+    # Save merged data as new CSV file
     df_merged.to_csv(output_csv, index=False, encoding='utf-8-sig')
 
-    print(f"数据已经成功更新并保存为 {output_csv}")
+    print(f"Data successfully updated and saved as {output_csv}")
 from tqdm.auto import tqdm
-tqdm.pandas()  # 为 pandas 注册进度条
+tqdm.pandas()  # Register progress bar for pandas
 
 def process_fs_reslult_new(input_csv, output_csv):
-    # 读取CSV文件
+    # Read CSV file
     df = pd.read_csv(input_csv)
     
-    # 重命名列
+    # Rename columns
     df.rename(columns={'weight': 'FS_weight', 'alntmscore': 'TM_weight'}, inplace=True)
     
-    # 将FS_weight和TM_weight列转换为数值型，并保留四位小数
+    # Convert FS_weight and TM_weight columns to numeric, keep four decimal places
     df['FS_weight'] = pd.to_numeric(df['FS_weight'], errors='coerce').round(4)
     df['TM_weight'] = pd.to_numeric(df['TM_weight'], errors='coerce').round(4)
     
     
-    # 重新排列列顺序，将source，target，FS_weight和TM_weight移到前面
+    # Rearrange column order, move source, target, FS_weight and TM_weight to front
     cols = ['source', 'target', 'FS_weight', 'TM_weight'] + [col for col in df.columns if col not in ['source', 'target', 'FS_weight', 'TM_weight']]
     df = df[cols]
     
-    # 筛选出FS_weight >= 0.7 且 TM_weight >= 0.5 的行
+    # Filter rows with FS_weight >= 0.7 and TM_weight >= 0.5
     #df_filtered = df[(df['FS_weight'] >= 0.7) & (df['TM_weight'] >= 0.5)]
     df =  df[df['source'].str.contains('Q99ZW2', na=False)]
     df_filtered = df[(df['FS_weight'] >= 0) & (df['TM_weight'] >= 0)]
     
-    # 将筛选后的数据保存为新的CSV文件
+    # Save filtered data as new CSV file
     df_filtered.to_csv(output_csv, index=False)
 
 
 def add_domain_info_to_target_cath_teddb(csv1_path, csv2_path, fasta_dict, output_path):
-    # 1. 读取csv1和csv2文件
+    # 1. Read csv1 and csv2 files
     csv1 = pd.read_csv(csv1_path)
     csv2 = pd.read_csv(csv2_path)
     
-    # 2. 创建一个字典，索引csv2的ted_id作为key，chopping、plddt、cath_label作为值
+    # 2. Create a dictionary, index csv2's ted_id as key, chopping, plddt, cath_label as values
     columns_to_extract = ['chopping', 'plddt', 'cath_label', 'Cluster_representative']
     csv2_dict = {
         row['ted_id']: {
@@ -1288,49 +1267,49 @@ def add_domain_info_to_target_cath_teddb(csv1_path, csv2_path, fasta_dict, outpu
         for _, row in csv2.iterrows()
     }
     
-    # 3. 一次性读取fasta文件并提取UniProt ID与序列长度
+    # 3. Read fasta file once and extract UniProt ID and sequence length
     #with open(fasta_path, "r") as fasta_in:
     #    fasta_records = list(SeqIO.parse(fasta_in, "fasta"))
     fasta_records = fasta_dict
-    # 将FASTA记录转换为字典，key为UniProt ID，value为序列长度
+    # Convert FASTA records to dictionary, key as UniProt ID, value as sequence length
     uniprot_to_len = {}
     uniprot_info = {}
     uniprot_seq = {}
     for key in fasta_records.keys():
-        # 提取UniProt ID：假设FASTA的ID格式为"tr|X6BLS5|X6BLS5_9HYPH"
+        # Extract UniProt ID: assume FASTA ID format as "tr|X6BLS5|X6BLS5_9HYPH"
         record = fasta_records[key]
-        uniprot_id = record.id.split('|')[1]  # 通过分割获取UniProt ID部分
+        uniprot_id = record.id.split('|')[1]  # Get UniProt ID part by splitting
         info = record.description
         uniprot_to_len[uniprot_id] = len(record.seq)
         uniprot_info[uniprot_id] = info
         uniprot_seq[uniprot_id] = str(record.seq)
         
-    # 4. 合并数据到csv1
+    # 4. Merge data to csv1
     def get_additional_info(row):
-        # 从target中提取uniprot_id（假设格式为target-xxxx，取'-'后面的部分）
+        # Extract uniprot_id from target (assume format target-xxxx, take part after '-')
         target = row['target']
         source = row['source']
         target_id = target.split('-')[1]
         source_id = source.split('_')[0]
         
-        # 1) 查找对应的ted_id信息
+        # 1) Find corresponding ted_id information
         ted_id = "_".join(target.split('_')[:3])
         #print(f'cathdb:{ted_id}')
-        # 查找csv2中相关ted_id的行
+        # Find rows with related ted_id in csv2
         if ted_id in csv2_dict:
             chopping = csv2_dict[ted_id]['chopping']
             plddt = csv2_dict[ted_id]['plddt']
             cath_label = csv2_dict[ted_id]['cath_label']
             Cluster_representative = csv2_dict[ted_id]['Cluster_representative']
         else:
-            Cluster_representative = chopping = plddt = cath_label  = None  # 如果没有找到ted_id，设置为None
+            Cluster_representative = chopping = plddt = cath_label  = None  # If ted_id not found, set to None
 
         
-        # 2) 获取UniProt ID的序列长度
+        # 2) Get sequence length for UniProt ID
         target_seq = uniprot_seq.get(target_id, None)
         if len(target_seq)>0:
             target_domain_seq = []
-            # 解析 chopping 信息
+            # Parse chopping information
             ranges = []
             for segment in chopping.split('_'):
                 start, end = map(int, segment.split('-'))
@@ -1342,14 +1321,14 @@ def add_domain_info_to_target_cath_teddb(csv1_path, csv2_path, fasta_dict, outpu
         target_domain_seq = ''.join(target_domain_seq)
 
         
-        # 2) 获取UniProt ID的序列长度
+        # 2) Get sequence length for UniProt ID
         source_seq = uniprot_seq.get(source_id, None)
         if len(source_seq)>0:
             start_res, end_res =  int(source.split('_')[-2].split('-')[0]),int(source.split('_')[-2].split('-')[1])
             source_domain_seq  = source_seq[start_res-1:end_res]
         else:
             source_domain_seq = []
-        target_len = uniprot_to_len.get(target_id, None)  # 如果没有找到该ID，返回None
+        target_len = uniprot_to_len.get(target_id, None)  # If ID not found, return None
         target_info = uniprot_info.get(target_id, None)
         #if target_len is None:
         #    print(uniprot_id)
@@ -1363,34 +1342,34 @@ def add_domain_info_to_target_cath_teddb(csv1_path, csv2_path, fasta_dict, outpu
 
 
         
-    # 5. 对csv1中的每一行应用get_additional_info函数
+    # 5. Apply get_additional_info function to each row in csv1
     csv1[['chopping', 'plddt', 'cath_label', 'Cluster_representative','target_len','target_info','source_domain_seq','target_domain_seq','protein_seq_sim','domain_seq_sim','assemble_seq','assemle_protein_sim','target_seq','source_seq']] = csv1.progress_apply(get_additional_info, axis=1)
     #csv1.apply(get_additional_info, axis=1)
     
     
-    # 定义前几列的列名
+    # Define first few column names
     first_columns=['source','target', 'FS_weight','TM_weight','target_info','chopping', 'source_domain_seq','target_domain_seq','target_len', 'plddt', 'cath_label','Cluster_representative','protein_seq_sim','domain_seq_sim','assemble_seq','assemle_protein_sim','target_seq','source_seq']
-    # 获取剩余列名
+    # Get remaining column names
     remaining_columns = [col for col in csv1.columns if col not in first_columns]
 
-    # 按照要求的顺序排列列
+    # Arrange columns in required order
     final_columns = first_columns + remaining_columns
     
 
-    # 调整列顺序
+    # Adjust column order
     csv1 = csv1[final_columns]
     
-    # 6. 保存合并后的csv1
+    # 6. Save merged csv1
     csv1.to_csv(output_path, index=False)
-    print(f"输出文件已保存至: {output_path}")
+    print(f"Output file saved to: {output_path}")
     
 
 def add_domain_info_to_target_cluster_teddb(csv1_path, csv2_path, fasta_dict, output_path):
-    # 1. 读取csv1和csv2文件
+    # 1. Read csv1 and csv2 files
     csv1 = pd.read_csv(csv1_path)
     csv2 = pd.read_csv(csv2_path)
 
-    # 2. 创建一个字典，索引csv2的ted_id作为key，chopping、plddt、cath_label作为值
+    # 2. Create a dictionary, index csv2's ted_id as key, chopping, plddt, cath_label as values
     columns_to_extract = ['chopping', 'plddt', 'cath_label', 'Cluster_representative']
     csv2_dict = {
         row['ted_id']: {
@@ -1399,50 +1378,50 @@ def add_domain_info_to_target_cluster_teddb(csv1_path, csv2_path, fasta_dict, ou
         }
         for _, row in csv2.iterrows()
     }
-    # 3. 一次性读取fasta文件并提取UniProt ID与序列长度
+    # 3. Read fasta file once and extract UniProt ID and sequence length
     #with open(fasta_path, "r") as fasta_in:
     #    fasta_records = list(SeqIO.parse(fasta_in, "fasta"))
     fasta_records = fasta_dict
-    # 将FASTA记录转换为字典，key为UniProt ID，value为序列长度
+    # Convert FASTA records to dictionary, key as UniProt ID, value as sequence length
     uniprot_to_len = {}
     uniprot_info = {}
     uniprot_seq = {}
     for key in fasta_records.keys():
-        # 提取UniProt ID：假设FASTA的ID格式为"tr|X6BLS5|X6BLS5_9HYPH"
+        # Extract UniProt ID: assume FASTA ID format as "tr|X6BLS5|X6BLS5_9HYPH"
         record = fasta_records[key]
-        uniprot_id = record.id.split('|')[1]  # 通过分割获取UniProt ID部分
+        uniprot_id = record.id.split('|')[1]  # Get UniProt ID part by splitting
         info = record.description
         uniprot_to_len[uniprot_id] = len(record.seq)
         uniprot_info[uniprot_id] = info
         uniprot_seq[uniprot_id] = str(record.seq)
     
-    # 4. 合并数据到csv1
+    # 4. Merge data to csv1
     def get_additional_info(row):
-        # 从target中提取uniprot_id（假设格式为target-xxxx，取'-'后面的部分）
+        # Extract uniprot_id from target (assume format target-xxxx, take part after '-')
         target = row['target']
         source = row['source']
         target_id = target.split('-')[1]
         source_id = source.split('_')[0]
         
-        # 1) 查找对应的ted_id信息
+        # 1) Find corresponding ted_id information
         ted_id = "_".join(target.split('_')[:3])
-        # 查找csv2中相关ted_id的行
+        # Find rows with related ted_id in csv2
         if ted_id in csv2_dict:
             chopping = csv2_dict[ted_id]['chopping']
             plddt = csv2_dict[ted_id]['plddt']
             cath_label = csv2_dict[ted_id]['cath_label']
             Cluster_representative = csv2_dict[ted_id]['Cluster_representative']
         else:
-            Cluster_representative=chopping = plddt = cath_label = None  # 如果没有找到ted_id，设置为None
+            Cluster_representative=chopping = plddt = cath_label = None  # If ted_id not found, set to None
 
-        # 2) 获取UniProt ID的序列长度
+        # 2) Get sequence length for UniProt ID
         target_seq = uniprot_seq.get(target_id, None)
-        if target_seq is None or len(target_seq) == 0:  # 先检查是否为None
+        if target_seq is None or len(target_seq) == 0:  # First check if None
             print(ted_id)
         
         if len(target_seq)>0:
             target_domain_seq = []
-            # 解析 chopping 信息
+            # Parse chopping information
             ranges = []
             for segment in chopping.split('_'):
                 start, end = map(int, segment.split('-'))
@@ -1454,14 +1433,14 @@ def add_domain_info_to_target_cluster_teddb(csv1_path, csv2_path, fasta_dict, ou
         target_domain_seq = ''.join(target_domain_seq)
 
         
-        # 2) 获取UniProt ID的序列长度
+        # 2) Get sequence length for UniProt ID
         source_seq = uniprot_seq.get(source_id, None)
         if len(source_seq)>0:
             start_res, end_res =  int(source.split('_')[-2].split('-')[0]),int(source.split('_')[-2].split('-')[1])
             source_domain_seq  = source_seq[start_res-1:end_res]
         else:
             source_domain_seq = []
-        target_len = uniprot_to_len.get(target_id, None)  # 如果没有找到该ID，返回None
+        target_len = uniprot_to_len.get(target_id, None)  # If ID not found, return None
         target_info = uniprot_info.get(target_id, None)
         #if target_len is None:
         #    print(uniprot_id)
@@ -1480,26 +1459,26 @@ def add_domain_info_to_target_cluster_teddb(csv1_path, csv2_path, fasta_dict, ou
         
     #csv1.apply(get_additional_info, axis=1)
     
-    # 5. 对csv1中的每一行应用get_additional_info函数
+    # 5. Apply get_additional_info function to each row in csv1
     csv1[['chopping', 'plddt', 'cath_label','Cluster_representative', 'target_len','target_info','source_domain_seq','target_domain_seq','protein_seq_sim','domain_seq_sim','assemble_seq','assemle_protein_sim','target_seq','source_seq']] = csv1.apply(get_additional_info, axis=1)
 
-    # 定义前几列的列名
+    # Define first few column names
     first_columns=['source','target', 'FS_weight','TM_weight','target_info','chopping', 'source_domain_seq','target_domain_seq','target_len', 'plddt', 'cath_label','Cluster_representative','protein_seq_sim','domain_seq_sim','assemble_seq','assemle_protein_sim','target_seq','source_seq']
-    # 获取剩余列名
+    # Get remaining column names
     remaining_columns = [col for col in csv1.columns if col not in first_columns]
-    # 按照要求的顺序排列列
+    # Arrange columns in required order
     final_columns = first_columns + remaining_columns
-    # 调整列顺序
+    # Adjust column order
     csv1 = csv1[final_columns]
     
-    # 6. 保存合并后的csv1
+    # 6. Save merged csv1
     csv1.to_csv(output_path, index=False)
-    print(f"输出文件已保存至: {output_path}")
+    print(f"Output file saved to: {output_path}")
     
     
     
 def add_domain_info_to_target_cluster_teddb_check(csv1_path, csv2_path, fasta_dict, output_path):
-    # 1. 读取csv1和csv2文件
+    # 1. Read csv1 and csv2 files
     csv1 = pd.read_csv(csv1_path)
     csv2  = pd.read_excel(csv2_path)
     csv2  = csv2.dropna(subset=['chopping_check'])
@@ -1507,35 +1486,35 @@ def add_domain_info_to_target_cluster_teddb_check(csv1_path, csv2_path, fasta_di
     csv2_dict = csv2_unique.set_index('target')[['chopping', 'chopping_check', 'plddt', 'cath_label','Cluster_representative']].to_dict(orient='index')
     
     
-    # 3. 一次性读取fasta文件并提取UniProt ID与序列长度
+    # 3. Read fasta file once and extract UniProt ID and sequence length
     #with open(fasta_path, "r") as fasta_in:
     #    fasta_records = list(SeqIO.parse(fasta_in, "fasta"))
     fasta_records = fasta_dict
-    # 将FASTA记录转换为字典，key为UniProt ID，value为序列长度
+    # Convert FASTA records to dictionary, key as UniProt ID, value as sequence length
     uniprot_to_len = {}
     uniprot_info = {}
     uniprot_seq = {}
     for key in fasta_records.keys():
-        # 提取UniProt ID：假设FASTA的ID格式为"tr|X6BLS5|X6BLS5_9HYPH"
+        # Extract UniProt ID: assume FASTA ID format as "tr|X6BLS5|X6BLS5_9HYPH"
         record = fasta_records[key]
-        uniprot_id = record.id.split('|')[1]  # 通过分割获取UniProt ID部分
+        uniprot_id = record.id.split('|')[1]  # Get UniProt ID part by splitting
         info = record.description
         uniprot_to_len[uniprot_id] = len(record.seq)
         uniprot_info[uniprot_id] = info
         uniprot_seq[uniprot_id] = str(record.seq)
     
-    # 4. 合并数据到csv1
+    # 4. Merge data to csv1
     def get_additional_info(row):
-        # 从target中提取uniprot_id（假设格式为target-xxxx，取'-'后面的部分）
+        # Extract uniprot_id from target (assume format target-xxxx, take part after '-')
         target = row['target']
         source = row['source']
         target_id = target.split('-')[1]
         source_id = source.split('_')[0]
         
-        # 1) 查找对应的ted_id信息
+        # 1) Find corresponding ted_id information
         ted_id = "_".join(target.split('_')[:3])
         print(ted_id)
-        # 查找csv2中相关ted_id的行
+        # Find rows with related ted_id in csv2
         if ted_id in csv2_dict:
             chopping = csv2_dict[ted_id]['chopping']
             chopping_check = csv2_dict[ted_id]['chopping_check']
@@ -1543,9 +1522,9 @@ def add_domain_info_to_target_cluster_teddb_check(csv1_path, csv2_path, fasta_di
             cath_label = csv2_dict[ted_id]['cath_label']
             Cluster_representative = csv2_dict[ted_id]['Cluster_representative']
         else:
-            chopping = plddt = cath_label = chopping_check = None  # 如果没有找到ted_id，设置为None
+            chopping = plddt = cath_label = chopping_check = None  # If ted_id not found, set to None
 
-        # 2) 获取UniProt ID的序列长度
+        # 2) Get sequence length for UniProt ID
         target_seq = uniprot_seq.get(target_id, None)
         if len(target_seq)>0:
             start_res, end_res = int(chopping_check.split('-')[0]),int(chopping_check.split('-')[1])
@@ -1553,14 +1532,14 @@ def add_domain_info_to_target_cluster_teddb_check(csv1_path, csv2_path, fasta_di
         else:
             target_domain_seq = []
             
-        # 2) 获取UniProt ID的序列长度
+        # 2) Get sequence length for UniProt ID
         source_seq = uniprot_seq.get(source_id, None)
         if len(source_seq)>0:
             start_res, end_res =  int(source.split('_')[-2].split('-')[0]),int(source.split('_')[-2].split('-')[1])
             source_domain_seq  = source_seq[start_res-1:end_res]
         else:
             source_domain_seq = []
-        target_len = uniprot_to_len.get(target_id, None)  # 如果没有找到该ID，返回None
+        target_len = uniprot_to_len.get(target_id, None)  # If ID not found, return None
         target_info = uniprot_info.get(target_id, None)
         #if target_len is None:
         #    print(uniprot_id)
@@ -1571,100 +1550,100 @@ def add_domain_info_to_target_cluster_teddb_check(csv1_path, csv2_path, fasta_di
         
         return pd.Series([chopping, chopping_check,plddt, cath_label, Cluster_representative,target_len,target_info,source_domain_seq,target_domain_seq,protein_seq_sim, domain_seq_sim,assemble_seq,assemle_protein_sim,target_seq,source_seq], index=['chopping', 'chopping_check','plddt', 'cath_label', 'Cluster_representative', 'target_len','target_info','source_domain_seq','target_domain_seq','protein_seq_sim','domain_seq_sim','assemble_seq','assemle_protein_sim','target_seq','source_seq'])
     
-    # 5. 对csv1中的每一行应用get_additional_info函数
+    # 5. Apply get_additional_info function to each row in csv1
     csv1[['chopping', 'chopping_check','plddt', 'cath_label', 'Cluster_representative','target_len','target_info','source_domain_seq','target_domain_seq','protein_seq_sim','domain_seq_sim','assemble_seq','assemle_protein_sim','target_seq','source_seq']] =  csv1.apply(get_additional_info, axis=1)
     
     
     columns_order = ['source','target', 'FS_weight','TM_weight','Dali_weight','target_info','chopping_check', 'target_len', 'plddt', 'cath_label','Cluster_representative','source_domain_seq','target_domain_seq','protein_seq_sim','domain_seq_sim','assemble_seq','assemle_protein_sim'] + [col for col in csv1.columns if col not in['source','target', 'FS_weight','TM_weight','Dali_weight','target_info','chopping_check', 'target_len', 'plddt', 'cath_label','Cluster_representative','source_domain_seq','target_domain_seq','protein_seq_sim','domain_seq_sim','assemble_seq','assemle_protein_sim']]
 
-    # 调整列顺序
+    # Adjust column order
     csv1 = csv1[columns_order]
     
-    # 6. 保存合并后的csv1
+    # 6. Save merged csv1
     csv1.to_csv(output_path, index=False)
-    print(f"输出文件已保存至: {output_path}")
+    print(f"Output file saved to: {output_path}")
 
-# 预加载 FASTA 文件并存入字典
+# Preload FASTA file and store in dictionary
 def load_fasta_to_dict(fasta_file):
-    fasta_dict = {}  # 存储第一个出现的序列
+    fasta_dict = {}  # Store first occurring sequence
     with open(fasta_file, "r") as fasta_in:
         for record in SeqIO.parse(fasta_in, "fasta"):
-            record_id = record.id.split('|')[1]  # 提取第二部分 ID
-            if record_id not in fasta_dict:  # 只保留第一个出现的
+            record_id = record.id.split('|')[1]  # Extract second part ID
+            if record_id not in fasta_dict:  # Only keep first occurrence
                 fasta_dict[record_id] = record
-    return fasta_dict  # 返回 {id: fasta_record} 字典
+    return fasta_dict  # Return {id: fasta_record} dictionary
 
 def add_domain_info_to_target_cathdb(csv1_path, csv2_path, fasta_dict, output_path):
-    # 1. 读取csv1和csv2文件
+    # 1. Read csv1 and csv2 files
     csv1 = pd.read_csv(csv1_path)
     csv2 = pd.read_csv(csv2_path)
     csv2 = csv2.drop_duplicates(subset='domain_id')
-    # 2. 创建一个字典，索引csv2的ted_id作为key，chopping、plddt、cath_label作为值
+    # 2. Create a dictionary, index csv2's ted_id as key, chopping, plddt, cath_label as values
     csv2_dict = csv2.set_index('domain_id')[['uniprot_id',  'cath_label' ]].to_dict(orient='index')
     
-    # 3. 一次性读取fasta文件并提取UniProt ID与序列长度
+    # 3. Read fasta file once and extract UniProt ID and sequence length
     #with open(fasta_path, "r") as fasta_in:
     #    fasta_records = list(SeqIO.parse(fasta_in, "fasta"))
     fasta_records = fasta_dict
-    # 将FASTA记录转换为字典，key为UniProt ID，value为序列长度
+    # Convert FASTA records to dictionary, key as UniProt ID, value as sequence length
     uniprot_to_len = {}
     uniprot_info = {}
     for key in fasta_records.keys():
-        # 提取UniProt ID：假设FASTA的ID格式为"tr|X6BLS5|X6BLS5_9HYPH"
+        # Extract UniProt ID: assume FASTA ID format as "tr|X6BLS5|X6BLS5_9HYPH"
         record = fasta_records[key]
-        uniprot_id = record.id.split('|')[1]  # 通过分割获取UniProt ID部分
+        uniprot_id = record.id.split('|')[1]  # Get UniProt ID part by splitting
         info = record.description
         uniprot_to_len[uniprot_id] = len(record.seq)
         uniprot_info[uniprot_id] = info
     
-    # 4. 合并数据到csv1
+    # 4. Merge data to csv1
     def get_additional_info(target):
-        # 从target中提取uniprot_id（假设格式为target-xxxx，取'-'后面的部分）
+        # Extract uniprot_id from target (assume format target-xxxx, take part after '-')
         uniprot_id = target
         
-        # 1) 查找对应的ted_id信息
+        # 1) Find corresponding ted_id information
         ted_id = target
         
-        # 查找csv2中相关ted_id的行
+        # Find rows with related ted_id in csv2
         if ted_id in csv2_dict:
             uniprot = csv2_dict[ted_id]['uniprot_id']
             cath_label = csv2_dict[ted_id]['cath_label']
         else:
-            uniprot = cath_label = None  # 如果没有找到ted_id，设置为None
+            uniprot = cath_label = None  # If ted_id not found, set to None
 
-        # 2) 获取UniProt ID的序列长度
-        target_len = uniprot_to_len.get(uniprot, None)  # 如果没有找到该ID，返回None
+        # 2) Get sequence length for UniProt ID
+        target_len = uniprot_to_len.get(uniprot, None)  # If ID not found, return None
         target_info = uniprot_info.get(uniprot, None) 
         if target_len is None:
             print(uniprot_id)
         return pd.Series([uniprot, cath_label, target_len,target_info], index=['uniprot_id', 'cath_label', 'target_len','target_info'])
     
-    # 5. 对csv1中的每一行应用get_additional_info函数
+    # 5. Apply get_additional_info function to each row in csv1
     csv1[['uniprot_id', 'cath_label', 'target_len','target_info']] = csv1['target'].apply(get_additional_info)
     
     
     columns_order = ['source','target', 'FS_weight','TM_weight','Dali_weight','uniprot_id', 'target_info','target_len', 'cath_label'] + [col for col in csv1.columns if col not in ['source','target', 'FS_weight','TM_weight','Dali_weight','uniprot_id', 'target_info','target_len', 'cath_label'] ]
 
-    # 调整列顺序
+    # Adjust column order
     csv1 = csv1[columns_order]
     
-    # 6. 保存合并后的csv1
+    # 6. Save merged csv1
     csv1.to_csv(output_path, index=False)
-    print(f"输出文件已保存至: {output_path}")
+    print(f"Output file saved to: {output_path}")
 
 
 
 def add_domain_chop_to_target_cathdb(csv1_path, domain_boundaries_data,  output_path):
-    # 1. 读取csv1和csv2文件
+    # 1. Read csv1 and csv2 files
     csv1 = pd.read_csv(csv1_path)
     with open(domain_boundaries_data, "rb") as f:
         domain_boundaries = pickle.load(f)
     
     
     
-    # 4. 合并数据到csv1
+    # 4. Merge data to csv1
     def get_additional_info(target):
-        # 从target中提取uniprot_id（假设格式为target-xxxx，取'-'后面的部分）
+        # Extract uniprot_id from target (assume format target-xxxx, take part after '-')
 
         if target[-2:] == "00":
             key = target[:-2] + "01"
@@ -1677,30 +1656,30 @@ def add_domain_chop_to_target_cathdb(csv1_path, domain_boundaries_data,  output_
         
         return pd.Series([ chain_id,chopping], index=['chain_id','chopping'])
     
-    # 5. 对csv1中的每一行应用get_additional_info函数
+    # 5. Apply get_additional_info function to each row in csv1
     csv1[['chain_id','chopping']] = csv1['target'].apply(get_additional_info)
     
     
     columns_order = ['source','target', 'FS_weight','TM_weight','Dali_weight','uniprot_id', 'target_info','target_len', 'cath_label','chopping','chain_id'] + [col for col in csv1.columns if col not in ['source','target', 'FS_weight','TM_weight','Dali_weight','uniprot_id', 'target_info','target_len', 'cath_label','chopping','chain_id'] ]
 
-    # 调整列顺序
+    # Adjust column order
     csv1 = csv1[columns_order]
     
-    # 6. 保存合并后的csv1
+    # 6. Save merged csv1
     csv1.to_csv(output_path, index=False)
-    print(f"输出文件已保存至: {output_path}")
+    print(f"Output file saved to: {output_path}")
 
 
 
 def get_protein_ted_info(protein_id):
     """
-    模拟从数据库或 API 获取蛋白质的详细信息。
-    返回值是一个 JSON 格式的模拟数据（真实使用时可替换为实际的 API 查询）。
+    Simulate getting protein detailed information from database or API.
+    Return value is simulated data in JSON format (can replace with actual API query in real use).
     """
-    url = f"{TED_info_URL}/uniprot/summary/{protein_id}"  # 替换为实际的 API 地址
+    url = f"{TED_info_URL}/uniprot/summary/{protein_id}"  # Replace with actual API address
     response = requests.get(url)
     if response.status_code == 200:
-        return response.json()  # 返回 JSON 数据
+        return response.json()  # Return JSON data
     else:
         print(f"Error fetching data for {protein_id}, status code: {response.status_code}")
         return None
@@ -1708,28 +1687,28 @@ def get_protein_ted_info(protein_id):
 
 def process_protein_ted_info(protein_data):
     """
-    处理蛋白质数据并保存为 DataFrame。
+    Process protein data and save as DataFrame.
 
     Args:
-        protein_data (dict): 包含蛋白质片段信息的字典。
+        protein_data (dict): Dictionary containing protein fragment information.
 
     Returns:
-        pd.DataFrame: 处理后的 DataFrame，包含所有片段的相关信息。
+        pd.DataFrame: Processed DataFrame containing all fragment related information.
     """
-    # 如果 "data" 键不存在，返回空的 DataFrame
+    # If "data" key doesn't exist, return empty DataFrame
     if "data" not in protein_data:
         print("Warning: 'data' field not found in protein_data.")
         return pd.DataFrame()
 
-    # 获取片段列表
+    # Get fragment list
     fragments = protein_data["data"]
 
-    # 创建一个列表存储表格数据
+    # Create a list to store table data
     processed_data = []
 
-    # 遍历每个片段，提取相关信息
+    # Traverse each fragment, extract related information
     for fragment in fragments:
-        # 基本信息
+        # Basic information
         ted_id = fragment.get("ted_id", "-")
         uniprot_acc = fragment.get("uniprot_acc", "-")
         chopping = fragment.get("chopping", "-")
@@ -1748,11 +1727,11 @@ def process_protein_ted_info(protein_data):
         tax_scientific_name = fragment.get("tax_scientific_name", "-")
         tax_lineage = fragment.get("tax_lineage", "-")
 
-        # 交互信息（如果存在）
+        # Interaction information (if exists)
         interactions = fragment.get("interactions", [])
         interaction_count = len(interactions)
 
-        # 将提取的数据存储为字典
+        # Store extracted data as dictionary
         processed_data.append({
             "ted_id": ted_id,
             "uniprot_acc": uniprot_acc,
@@ -1772,104 +1751,104 @@ def process_protein_ted_info(protein_data):
             "tax_scientific_name": tax_scientific_name,
             "tax_lineage": tax_lineage,
             "interaction_count": interaction_count,
-            "interactions": interactions  # 保留完整交互信息（如果需要）
+            "interactions": interactions  # Keep complete interaction information (if needed)
         })
 
-    # 将处理后的数据转换为 DataFrame
+    # Convert processed data to DataFrame
     df = pd.DataFrame(processed_data)
     return df
 
 
 def process_fs_reslult_new(input_csv, output_csv):
-    # 读取CSV文件
+    # Read CSV file
     df = pd.read_csv(input_csv)
     
-    # 重命名列
+    # Rename columns
     df.rename(columns={'weight': 'FS_weight', 'alntmscore': 'TM_weight'}, inplace=True)
     
-    # 将FS_weight和TM_weight列转换为数值型，并保留四位小数
+    # Convert FS_weight and TM_weight columns to numeric, keep four decimal places
     df['FS_weight'] = pd.to_numeric(df['FS_weight'], errors='coerce').round(4)
     df['TM_weight'] = pd.to_numeric(df['TM_weight'], errors='coerce').round(4)
     
     
-    # 重新排列列顺序，将source，target，FS_weight和TM_weight移到前面
+    # Rearrange column order, move source, target, FS_weight and TM_weight to front
     cols = ['source', 'target', 'FS_weight', 'TM_weight'] + [col for col in df.columns if col not in ['source', 'target', 'FS_weight', 'TM_weight']]
     df = df[cols]
     
-    # 筛选出FS_weight >= 0.7 且 TM_weight >= 0.5 的行
+    # Filter rows with FS_weight >= 0.7 and TM_weight >= 0.5
     #df_filtered = df[(df['FS_weight'] >= 0.7) & (df['TM_weight'] >= 0.5)]
     df =  df[df['source'].str.contains('Q99ZW2', na=False)]
     df_filtered = df[(df['FS_weight'] >= 0) & (df['TM_weight'] >= 0)]
     
-    # 将筛选后的数据保存为新的CSV文件
+    # Save filtered data as new CSV file
     df_filtered.to_csv(output_csv, index=False)
 
 
 def get_protein_ted_info_to_csv(input_csv, output_csv):
     """
-    从输入的蛋白质 ID 文件中读取 ID 列表，获取相关蛋白质信息，
-    并将处理后的数据保存到输出 CSV 文件中。
+    Read ID list from input protein ID file, get related protein information,
+    and save processed data to output CSV file.
 
     Args:
-        input_csv (str): 输入文件路径，包含蛋白质 ID 列表。
-        output_csv (str): 输出文件路径，用于保存处理后的蛋白质信息。
+        input_csv (str): Input file path containing protein ID list.
+        output_csv (str): Output file path to save processed protein information.
     """
-    # 确定文件是 TSV 还是 CSV 格式
+    # Determine if file is TSV or CSV format
     try:
-        # 尝试以 TSV 格式读取
+        # Try to read as TSV format
         protein_ids = pd.read_csv(input_csv, sep="\t")["Entry"].tolist()
     except Exception as e:
-        # 如果失败，尝试以 CSV 格式读取
+        # If fails, try to read as CSV format
         protein_ids = pd.read_csv(input_csv)["Entry"].tolist()
 
-    # 初始化一个空的 DataFrame 用于存储所有蛋白质数据
+    # Initialize empty DataFrame to store all protein data
     all_protein_data = pd.DataFrame()
 
-    # 遍历每个蛋白质 ID，获取数据并处理
+    # Traverse each protein ID, get data and process
     for idx, protein_id in enumerate(protein_ids):
         print(f"Processing protein {idx + 1}/{len(protein_ids)}: {protein_id}")
 
-        # 调用 API 获取蛋白质数据
-        protein_data = get_protein_ted_info(protein_id)  # 确保 fetch_protein_data 函数已定义
+        # Call API to get protein data
+        protein_data = get_protein_ted_info(protein_id)  # Ensure fetch_protein_data function is defined
 
-        # 如果获取数据为空，则跳过
+        # If getting data empty, skip
         if not protein_data:
             print(f"Warning: No data found for protein ID {protein_id}. Skipping...")
             continue
 
-        # 处理蛋白质数据
-        protein_df = process_protein_ted_info(protein_data)  # 使用更新后的 process_protein_data 函数
+        # Process protein data
+        protein_df = process_protein_ted_info(protein_data)  # Use updated process_protein_data function
 
-        # 如果处理后的数据为空，则跳过
+        # If processed data empty, skip
         if protein_df.empty:
             print(f"Warning: No fragments found for protein ID {protein_id}. Skipping...")
             continue
 
-        # 合并当前蛋白质的数据到总数据中
+        # Merge current protein data to total data
         all_protein_data = pd.concat([all_protein_data, protein_df], ignore_index=True)
 
-        # 添加延时避免请求过于频繁（可选）
+        # Add delay to avoid too frequent requests (optional)
         time.sleep(1)
 
-    # 保存所有处理后的数据到输出 CSV 文件
+    # Save all processed data to output CSV file
     all_protein_data.to_csv(output_csv, index=False)
     print(f"Protein data successfully saved to {output_csv}")
 
 
 def get_protein_domains(protein_id, api_url="https://api.ted-database.org/protein"):
     """
-    从 TED 接口获取指定蛋白质的 domain 数据
+    Get domain data for specified protein from TED interface
     Args:
-        protein_id (str): 目标蛋白质的 UniProt ID（例如 'Q99ZW2'）
-        api_url (str): TED API 的基础 URL
+        protein_id (str): Target protein's UniProt ID (e.g. 'Q99ZW2')
+        api_url (str): TED API base URL
     Returns:
-        list: 包含 domain 信息的字典列表
+        list: Dictionary list containing domain information
     """
     url = f"{api_url}/{protein_id}/domains"
     response = requests.get(url)
     
     if response.status_code == 200:
-        data = response.json()  # 假设返回的是 JSON 格式
+        data = response.json()  # Assume return is JSON format
         return data.get("data", [])
     else:
         print(f"Failed to retrieve data for {protein_id}. Status code: {response.status_code}")
@@ -1877,13 +1856,13 @@ def get_protein_domains(protein_id, api_url="https://api.ted-database.org/protei
 
 def process_protein_domains(domain_data):
     """
-    处理并格式化 domain 数据
+    Process and format domain data
     Args:
-        domain_data (list): 从 TED 获取的 domain 数据（JSON 格式）
+        domain_data (list): Domain data obtained from TED (JSON format)
     Returns:
-        pd.DataFrame: 格式化为 Pandas DataFrame
+        pd.DataFrame: Formatted as Pandas DataFrame
     """
-    # 提取感兴趣字段
+    # Extract fields of interest
     domain_list = []
     for domain in domain_data:
         domain_list.append({
@@ -1902,10 +1881,10 @@ def process_protein_domains(domain_data):
 
 def save_protein_domains_to_csv(protein_id, output_file):
     """
-    获取指定蛋白质的 domain 数据并保存到 CSV 文件
+    Get domain data for specified protein and save to CSV file
     Args:
-        protein_id (str): 目标蛋白质的 UniProt ID
-        output_file (str): 输出 CSV 文件路径
+        protein_id (str): Target protein's UniProt ID
+        output_file (str): Output CSV file path
     """
     domain_data = get_protein_domains(protein_id)
     if domain_data:
@@ -2071,7 +2050,7 @@ def add_uniprot_to_output(output_file, output_with_uniprot_file):
 
      
 def download_pdb(pdb_id, pdb_dir, pdb_url_template="https://files.rcsb.org/download/{pdb_id}.pdb"):
-    """下载 PDB 文件，并加入重试机制"""
+    """Download PDB file with retry mechanism"""
     pdb_url = pdb_url_template.format(pdb_id=pdb_id)
     save_path = os.path.join(pdb_dir, f"{pdb_id}.pdb")
 
@@ -2098,7 +2077,7 @@ def download_pdb(pdb_id, pdb_dir, pdb_url_template="https://files.rcsb.org/downl
 
 
 def download_fasta(uniprot_id, pdb_id, fasta_url_template="https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta", max_versions=20, max_retries=5):
-    """下载 FASTA 序列，并返回 FASTA 数据"""
+    """Download FASTA sequence and return FASTA data"""
     
     if pd.isna(uniprot_id) or not uniprot_id:
         print(f"Invalid UniProt ID for PDB {pdb_id}: {uniprot_id}. Skipping FASTA download.")
@@ -2106,12 +2085,12 @@ def download_fasta(uniprot_id, pdb_id, fasta_url_template="https://rest.uniprot.
 
     fasta_url = fasta_url_template.format(uniprot_id=uniprot_id)
     
-    # 尝试从标准 URL 下载 FASTA 数据，增加重试机制
+    # Try to download FASTA data from standard URL with retry mechanism
     for attempt in range(max_retries):
         try:
             response = requests.get(fasta_url)
-            if response.status_code == 200 and response.text.strip():  # 检查响应是否有效且非空
-                # 修改 FASTA 头部，添加 PDB ID
+            if response.status_code == 200 and response.text.strip():  # Check if response valid and not empty
+                # Modify FASTA header, add PDB ID
                 fasta_data = response.text
                 lines = fasta_data.splitlines()
 
@@ -2122,12 +2101,12 @@ def download_fasta(uniprot_id, pdb_id, fasta_url_template="https://rest.uniprot.
                 print(f"Attempt {attempt+1}: FASTA content is empty or invalid from standard URL.")
         except requests.RequestException as e:
             print(f"Attempt {attempt+1}: Exception occurred: {e}")
-        # 可以根据需要设置重试间隔，例如等待 1 秒
+        # Can set retry interval as needed, e.g. wait 1 second
         time.sleep(5)
 
-    # 如果重试多次后仍未成功，则进入 except 块，尝试从 UniSave 下载
+    # If still not successful after multiple retries, enter except block, try to download from UniSave
     print("Standard FASTA URL failed after retries. Trying UniSave for multiple versions...")
-    for version in range(max_versions, 0, -1):  # 从 max_versions 到 1
+    for version in range(max_versions, 0, -1):  # From max_versions to 1
         unisave_url = f"https://rest.uniprot.org/unisave/{uniprot_id}?format=fasta&versions={version}"
         try:
             response = requests.get(unisave_url)
@@ -2138,16 +2117,16 @@ def download_fasta(uniprot_id, pdb_id, fasta_url_template="https://rest.uniprot.
                     lines[0] = lines[0] + f"__{pdb_id}"
                 return "\n".join(lines)
             else:
-                continue  # 当前版本失败，尝试下一版本
+                continue  # Current version failed, try next version
         except requests.RequestException:
-            continue  # 当前版本请求失败，尝试下一版本
+            continue  # Current version request failed, try next version
 
     print(f"Unable to download FASTA sequence for {uniprot_id} after trying all versions.")
     return None
 
 
 def download_fasta33(uniprot_id, pdb_id, fasta_url_template="https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta", max_versions=20):
-    """下载 FASTA 序列，并返回 FASTA 数据"""
+    """Download FASTA sequence and return FASTA data"""
     
     if pd.isna(uniprot_id) or not uniprot_id:
         print(f"Invalid UniProt ID for PDB {pdb_id}: {uniprot_id}. Skipping FASTA download.")
@@ -2195,7 +2174,7 @@ def download_fasta33(uniprot_id, pdb_id, fasta_url_template="https://rest.unipro
         print(f"Unable to download FASTA sequence for {uniprot_id} after trying all versions.")
         return None
 def download_fasta_write_to_file(uniprot_id, pdb_id,  fasta_output_dir, fasta_url_template="https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta",max_versions=20):
-    """下载 FASTA 序列，并加入重试机制"""
+    """Download FASTA sequence with retry mechanism"""
     if pd.isna(uniprot_id) or not uniprot_id:
         print(f"Invalid UniProt ID for PDB {pdb_id}: {uniprot_id}. Skipping FASTA download.")
         return None
@@ -2263,8 +2242,6 @@ def download_fasta_write_to_file(uniprot_id, pdb_id,  fasta_output_dir, fasta_ur
             return
     return
 
-    
-
 def download_pdb_and_fasta_by_cathid_parallel(output_file, pdb_dir, fasta_file, pdb_url_template="https://files.rcsb.org/download/{pdb_id}.pdb", fasta_url_template="https://www.uniprot.org/uniprot/{uniprot_id}.fasta"):
     """
     Download full PDB files and FASTA sequences based on unique PDB IDs from the output CSV file.
@@ -2293,39 +2270,36 @@ def download_pdb_and_fasta_by_cathid_parallel(output_file, pdb_dir, fasta_file, 
     # Extract unique PDB IDs from domain_id
     pdb_ids = df['domain_id'].str[:4].dropna().unique()
 
-    # 初始化一个列表来存储所有的 FASTA 序列
+    # Initialize a list to store all FASTA sequences
     fasta_sequences = []
-    """
-    # 使用线程池并行下载 PDB 文件
+    # Use thread pool to download PDB files in parallel
     with ThreadPoolExecutor() as pdb_executor:
-        # 提交每个 PDB 下载任务
+        # Submit each PDB download task
         pdb_futures = [pdb_executor.submit(download_pdb, pdb_id, pdb_dir) for pdb_id in pdb_ids]
         
-        # 等待所有 PDB 下载任务完成
+        # Wait for all PDB download tasks to complete
         for future in as_completed(pdb_futures):
-            future.result()  # 获取每个线程的返回结果，虽然我们此时不需要结果
-    """
-    # 使用线程池并行下载 FASTA 序列
-    
+            future.result()  # Get each thread's return result, although we don't need it now
+
     with ThreadPoolExecutor() as fasta_executor:
-        # 提交每个 FASTA 下载任务
+        # Submit each FASTA download task
         fasta_futures = []
         for pdb_id in pdb_ids:
             uniprot_id = df.loc[df['domain_id'].str[:4] == pdb_id, 'uniprot_id'].iloc[0]# Retrieve UniProt ID from the CSV file
             print(uniprot_id)
-            if pd.notna(uniprot_id):  # 确保 uniprot_id 不为空
+            if pd.notna(uniprot_id):  # Ensure uniprot_id is not empty
                 fasta_futures.append(fasta_executor.submit(download_fasta, uniprot_id, pdb_id, fasta_url_template))
             else:
                 print(f"Skipping FASTA download for PDB {pdb_id} as UniProt ID is NaN")
 
 
-        # 收集所有返回的 FASTA 数据
+        # Collect all returned FASTA data
         for future in as_completed(fasta_futures):
             fasta_data = future.result()
             if fasta_data:
                 fasta_sequences.append(fasta_data)
                 
-    # 将所有 FASTA 序列写入文件
+    # Write all FASTA sequences to file
     with open(fasta_file, "w") as fasta_out:
         for fasta in fasta_sequences:
                 fasta_out.writelines(fasta + "\n")
@@ -2337,7 +2311,7 @@ from Bio import SeqIO
 
 
 def process_pdb_for_domain(domain_id, pdb_dir, domain_pdb_dir, domain_boundaries):
-    """处理PDB文件并提取域级别的PDB"""
+    """Process PDB files and extract domain-level PDB"""
     pdb_id = domain_id[:4]
     if domain_id[-2:] == "00":
         key = domain_id[:-2] + "01"
@@ -2379,7 +2353,7 @@ def process_pdb_for_domain(domain_id, pdb_dir, domain_pdb_dir, domain_boundaries
         return None
 
 def process_fasta_for_domain_check(domain_id, pdb_id, ranges, fasta_records):
-    """处理FASTA文件并提取域级别的FASTA"""
+    """Process FASTA files and extract domain-level FASTA"""
     try:
         domain_sequence = ""
         id = pdb_id.split('-')[1]
@@ -2395,10 +2369,10 @@ def process_fasta_for_domain_check(domain_id, pdb_id, ranges, fasta_records):
 
 
 def process_fasta_for_domain(domain_id, pdb_id, ranges, fasta_records):
-    """处理FASTA文件并提取域级别的FASTA"""
+    """Process FASTA files and extract domain-level FASTA"""
     try:
         domain_sequence = ""
-        # 查找对应的FASTA记录
+        # Find corresponding FASTA record
         for record in fasta_records:
             if record.description.split("__")[1] == pdb_id:
                 seq = str(record.seq)
@@ -2504,7 +2478,7 @@ def split_domain_by_cath_boundary_and_save_fasta_parallel(pdb_dir, boundary_file
         except Exception as e:
             print(f"Error reading the boundary file: {e}")
 
-    # 读取完整的FASTA文件数据
+    # Read complete FASTA file data
     fasta_records = []
     try:
         with open(fasta_file, "r") as fasta_in:
@@ -2513,30 +2487,30 @@ def split_domain_by_cath_boundary_and_save_fasta_parallel(pdb_dir, boundary_file
         print(f"Error reading FASTA file: {e}")
         return
 
-    # 处理PDB文件并提取域
-    # 先处理所有PDB文件，再处理FASTA文件
+    # Process PDB files and extract domains
+    # First process all PDB files, then process FASTA files
     pdb_futures = []
     with ThreadPoolExecutor() as pdb_executor:
-        # 提交PDB处理任务
+        # Submit PDB processing tasks
         pdb_futures = [
             pdb_executor.submit(process_pdb_for_domain, domain_id, pdb_dir, domain_pdb_dir, domain_boundaries)
             for domain_id in valid_domain_ids
         ]
 
-    # 收集PDB处理结果，并处理FASTA文件
+    # Collect PDB processing results, and process FASTA files
     domain_fasta_sequences = []
     with ThreadPoolExecutor() as fasta_executor:
-        # 提交FASTA处理任务
+        # Submit FASTA processing tasks
         for future in as_completed(pdb_futures):
             result = future.result()
             if result:
                 domain_id, pdb_id, ranges = result
-                # 获取域的FASTA序列
+                # Get domain FASTA sequence
                 fasta_sequence = process_fasta_for_domain(domain_id, pdb_id, ranges, fasta_records)
                 if fasta_sequence:
                     domain_fasta_sequences.append(fasta_sequence)
 
-    # 写入所有的FASTA序列到文件
+    # Write all FASTA sequences to file
     with open(domain_fasta_file, "w") as fasta_out:
         fasta_out.writelines(domain_fasta_sequences)
 
@@ -2774,7 +2748,7 @@ def split_domain_by_cath_boundary(pdb_dir, boundary_file, domain_pdb_dir,csv_fil
         except Exception as e:
             print(f"Error reading the boundary file: {e}")
             return
-    #第一次运行时
+    # First run
     #with open("/mnt/sdb4/protein_gen/Cas9_domain_work/data/TED/Cas9/cath_domain_boundaries.pkl", "wb") as f:
     #    pickle.dump(domain_boundaries, f)
     
@@ -2821,20 +2795,20 @@ def split_domain_by_cath_boundary(pdb_dir, boundary_file, domain_pdb_dir,csv_fil
 import pandas as pd
 
 def copy_files(src_folder, dest_folder):
-    # 确保目标文件夹存在，如果不存在则创建
+    # Ensure target folder exists, create if not exists
     if not os.path.exists(dest_folder):
         os.makedirs(dest_folder)
     
-    # 获取源文件夹中的所有文件
+    # Get all files in source folder
     for item in os.listdir(src_folder):
-        # 构建源文件和目标文件的完整路径
+        # Build complete paths for source and target files
         src_path = os.path.join(src_folder, item)
         dest_path = os.path.join(dest_folder, item)
         
-        # 如果是文件，进行复制
+        # If it's a file, copy it
         if os.path.isfile(src_path):
             shutil.copy(src_path, dest_path)
-        # 如果是子文件夹，也可以递归复制
+        # If it's a subfolder, can also copy recursively
         elif os.path.isdir(src_path):
             shutil.copytree(src_path, dest_path)
 
@@ -3004,7 +2978,7 @@ def get_ted_domains_by_cluster(true_hnh_info_with_cluster, clustering_file, outp
         print(f"An error occurred: {e}")
         
 
-# 统一下载，然后只写入一次，会丢数据，所以下载了一次fasta，就保存一个文件，
+# Unified download, then write only once, may lose data, so save a file after each FASTA download
 def download_pdb_and_fasta_from_AFDB_parallel(hnh_cath_in_ted_file, output_dir,  all_fasta_output_file):
     """
     Download PDB data and FASTA sequences from AlphaFold database based on TED IDs.
@@ -3032,7 +3006,7 @@ def download_pdb_and_fasta_from_AFDB_parallel(hnh_cath_in_ted_file, output_dir, 
             .apply(lambda x: x.split('_')[0] + '_' + x.split('_')[1])  # Split and extract the first part
             .unique()  # Get unique values
         )
-        # 初始化一个列表来存储所有的 FASTA 序列
+        # Initialize a list to store all FASTA sequences
         fasta_sequences = []
         
         # Ensure the output directory exists
@@ -3040,41 +3014,42 @@ def download_pdb_and_fasta_from_AFDB_parallel(hnh_cath_in_ted_file, output_dir, 
 
         # Base URL for downloading PDB data from AlphaFold
         
-        # 初始化一个列表来存储所有的 FASTA 序列
+        # Initialize a list to store all FASTA sequences
         fasta_sequences = []
         
-        # 使用线程池并行下载 PDB 文件
-
+        # Use thread pool to download PDB files in parallel
+        
+        print("Check Alphafold pdb template should update or not")
         with ThreadPoolExecutor() as pdb_executor:
-            # 提交每个 PDB 下载任务
+            # Submit each PDB download task
             pdb_futures = [pdb_executor.submit(download_pdb, pdb_id, output_dir, pdb_url_template = "https://alphafold.ebi.ac.uk/files/{pdb_id}.pdb" ) for pdb_id in pdb_ids]
             
-            # 等待所有 PDB 下载任务完成
+            # Wait for all PDB download tasks to complete
             for future in as_completed(pdb_futures):
-                future.result()  # 获取每个线程的返回结果，虽然我们此时不需要结果
-
+                future.result()  # Get each thread's return result, although we don't need it now
         
-        # 使用线程池并行下载 FASTA 序列
+        
+        # Use thread pool to download FASTA sequences in parallel
         with ThreadPoolExecutor() as fasta_executor:
-            # 提交每个 FASTA 下载任务
+            # Submit each FASTA download task
             fasta_futures = []
-            # 使用 tqdm 进度条包装任务
+            # Use tqdm progress bar to wrap tasks
 
             for pdb_id in pdb_ids:
                 uniprot_id = pdb_id.split('-')[1]# Retrieve UniProt ID from the CSV file
-                if pd.notna(uniprot_id):  # 确保 uniprot_id 不为空
+                if pd.notna(uniprot_id):  # Ensure uniprot_id is not empty
                     print(uniprot_id)
                     fasta_futures.append(fasta_executor.submit(download_fasta, uniprot_id, pdb_id,fasta_url_template="https://www.uniprot.org/uniprot/{uniprot_id}.fasta",max_versions=20))
                 else:
                     print(f"Skipping FASTA download for PDB {pdb_id} as UniProt ID is NaN")
                     
             
-        # 收集所有返回的 FASTA 数据
+        # Collect all returned FASTA data
             for future in as_completed(fasta_futures):
                 fasta_data = future.result()
                 if fasta_data:
                     fasta_sequences.append(fasta_data)
-        # 将所有 FASTA 序列写入文件
+        # Write all FASTA sequences to file
         with open(all_fasta_output_file, "w") as fasta_out:
             for fasta in fasta_sequences:
                  fasta_out.writelines(fasta + "\n")
@@ -3121,7 +3096,7 @@ def extract_fasta_sequence(fasta_file, pdb_id, domain_id, ranges, output_fasta_p
                 print(f"Saved domain {domain_id} FASTA to {output_fasta_path}")
             break  # We stop after finding the first matching record
 def process_pdb_for_domain_AFDB(row, pdb_dir, domain_pdb_dir):
-    """处理PDB文件并提取域级别的PDB"""
+    """Process PDB files and extract domain-level PDB"""
     ted_id = row['ted_id']
     pdb_id = "_".join(ted_id.split('_')[:2])
     pdb_path = os.path.join(pdb_dir, f"{pdb_id}.pdb")
@@ -3130,7 +3105,7 @@ def process_pdb_for_domain_AFDB(row, pdb_dir, domain_pdb_dir):
     # Skip if PDB file doesn't exist
     
     chopping = row['chopping']
-    # 解析 chopping 信息
+    # Parse chopping information
     ranges = []
     for segment in chopping.split('_'):
         start, end = map(int, segment.split('-'))
@@ -3143,7 +3118,7 @@ def process_pdb_for_domain_AFDB(row, pdb_dir, domain_pdb_dir):
 
 
     if os.path.exists(domain_pdb_path):
-        print(f"domain geted {domain_pdb_path}. Skipping.")
+        print(f"domain already exists {domain_pdb_path}. Skipping.")
         return  ted_id, pdb_id, ranges
     
     parser = PDB.PDBParser(QUIET=True)
@@ -3176,7 +3151,7 @@ def process_pdb_for_domain_AFDB(row, pdb_dir, domain_pdb_dir):
 
 
 def process_pdb_for_domain_check(row, pdb_dir, domain_pdb_dir):
-    """处理PDB文件并提取域级别的PDB"""
+    """Process PDB files and extract domain-level PDB"""
     ted_id = row['target']
     pdb_id = "_".join(ted_id.split('_')[:2])
     pdb_path = os.path.join(pdb_dir, f"{pdb_id}.pdb")
@@ -3185,7 +3160,7 @@ def process_pdb_for_domain_check(row, pdb_dir, domain_pdb_dir):
     # Skip if PDB file doesn't exist
     
     chopping = row['chopping_check']
-    # 解析 chopping 信息
+    # Parse chopping information
     ranges = []
     for segment in chopping.split('_'):
         start, end = map(int, segment.split('-'))
@@ -3198,7 +3173,7 @@ def process_pdb_for_domain_check(row, pdb_dir, domain_pdb_dir):
 
 
     if os.path.exists(domain_pdb_path):
-        print(f"domain geted {domain_pdb_path}. Skipping.")
+        print(f"domain already exists {domain_pdb_path}. Skipping.")
         return  ted_id_check, pdb_id, ranges
     
     parser = PDB.PDBParser(QUIET=True)
@@ -3233,19 +3208,19 @@ def process_pdb_for_domain_check(row, pdb_dir, domain_pdb_dir):
 
 def get_figure2f_data(input_file, output_file):
     """
-    将csv1转换为csv2格式
+    Convert csv1 to csv2 format
     
-    参数:
-    input_file: 输入CSV文件路径
-    output_file: 输出CSV文件路径
+    Parameters:
+    input_file: Input CSV file path
+    output_file: Output CSV file path
     """
-    # 读取输入CSV文件
+    # Read input CSV file
     df1 = pd.read_csv(input_file)
     
-    # 存储结果的列表
+    # List to store results
     result_data = []
     
-    # 权重列名映射到weight_type
+    # Weight column names mapped to weight_type
     weight_columns = {
         'FS_weight_Dali': 'FS_weight',
         'FS_weight': 'FS_weight', 
@@ -3253,23 +3228,23 @@ def get_figure2f_data(input_file, output_file):
         'TM_weight': 'TM_weight'
     }
     
-    # 处理每一行
+    # Process each row
     for index, row in df1.iterrows():
-        current_id = index + 1  # id从1开始
+        current_id = index + 1  # id starts from 1
         cath_label = row['cath_label']
         
-        # 确定source_file的第一部分
+        # Determine first part of source_file
         if '.' in str(cath_label):
             first_part = 'TedCath_'
         else:
             first_part = 'TedCluster_'
             
-        # 处理四个权重值
+        # Process four weight values
         for weight_col in weight_columns:
             value = row[weight_col]
             weight_type = weight_columns[weight_col]
             
-            # 确定source_file的第二部分
+            # Determine second part of source_file
             if weight_col in ['FS_weight_Dali', 'TM_weight_Dali']:
                 second_part = 'Sim_Check'
             else:
@@ -3277,7 +3252,7 @@ def get_figure2f_data(input_file, output_file):
                 
             source_file = first_part + second_part
             
-            # 添加到结果中
+            # Add to result
             result_data.append({
                 'id': current_id,
                 'value': value,
@@ -3285,15 +3260,15 @@ def get_figure2f_data(input_file, output_file):
                 'source_file': source_file
             })
     
-    # 创建输出DataFrame
+    # Create output DataFrame
     df2 = pd.DataFrame(result_data)
     
-    # 保存到CSV文件
+    # Save to CSV file
     df2.to_csv(output_file, index=False)
     
-    print(f"转换完成！输出文件：{output_file}")
-    print(f"输入行数：{len(df1)}")
-    print(f"输出行数：{len(df2)}")
+    print(f"Conversion complete! Output file: {output_file}")
+    print(f"Input rows: {len(df1)}")
+    print(f"Output rows: {len(df2)}")
     
     return df2
 
@@ -3319,9 +3294,9 @@ def split_domain_by_ted_boundary_and_save_fasta_parallel(hnh_cath_in_ted_file, p
         # Load the HNH_cath_in_ted file
         hnh_cath_df = pd.read_csv(hnh_cath_in_ted_file)
         if 'ted_id' not in hnh_cath_df.columns or 'chopping' not in hnh_cath_df.columns:
-            raise ValueError("在 HNH_cath_in_ted 文件中未找到 'ted_id' 或 'chopping' 列。")
+            raise ValueError("'ted_id' or 'chopping' column not found in HNH_cath_in_ted file.")
         
-                # 读取完整的FASTA文件数据
+                # Read complete FASTA file data
         fasta_records = []
         try:
             with open(fasta_file, "r") as fasta_in:
@@ -3330,36 +3305,36 @@ def split_domain_by_ted_boundary_and_save_fasta_parallel(hnh_cath_in_ted_file, p
             print(f"Error reading FASTA file: {e}")
             return
     
-        # 处理PDB文件并提取域
+        # Process PDB files and extract domains
         pdb_futures = []
         with ThreadPoolExecutor() as pdb_executor:
-            # 提交PDB处理任务
+            # Submit PDB processing tasks
             pdb_futures = [
                 pdb_executor.submit(process_pdb_for_domain_AFDB, row, pdb_dir, domain_pdb_dir)
                 for _, row in hnh_cath_df.iterrows()
             ]
 
-        # 收集PDB处理结果，并处理FASTA文件
+        # Collect PDB processing results, and process FASTA files
         domain_fasta_sequences = []
         with ThreadPoolExecutor() as fasta_executor:
-            # 提交FASTA处理任务
+            # Submit FASTA processing tasks
             for future in as_completed(pdb_futures):
                 result = future.result()
                 if result:
                     domain_id, pdb_id, ranges = result
-                    # 获取域的FASTA序列
-                    fasta_sequence = process_fasta_for_domain(domain_id, pdb_id, ranges, fasta_records)
+                    # Get domain FASTA sequence
+                    fasta_sequence = process_fasta_for_domain(domain_id,  pdb_id.replace('_v6', '_v4'), ranges, fasta_records)
                     if fasta_sequence:
                         domain_fasta_sequences.append(fasta_sequence)
 
-        # 写入所有的FASTA序列到文件
+        # Write all FASTA sequences to file
         with open(domain_fasta_file, "w") as fasta_out:
             fasta_out.writelines(domain_fasta_sequences)
 
         print("Domain-level PDB and FASTA files have been processed and saved.")
         
     except Exception as e:
-        print(f"发生错误：{e}")
+        print(f"An error occurred: {e}")
         
 
 def split_domain_after_check_and_save_fasta_parallel(domain_check_info, pdb_dir, domain_pdb_dir, domain_fasta_file, fasta_file):
@@ -3388,36 +3363,36 @@ def split_domain_after_check_and_save_fasta_parallel(domain_check_info, pdb_dir,
         fasta_records = fasta_dict
 
 
-        # 处理PDB文件并提取域
+        # Process PDB files and extract domains
         pdb_futures = []
         with ThreadPoolExecutor() as pdb_executor:
-            # 提交PDB处理任务
+            # Submit PDB processing tasks
             pdb_futures = [
                 pdb_executor.submit(process_pdb_for_domain_check, row, pdb_dir, domain_pdb_dir)
                 for _, row in hnh_cath_df.iterrows()
             ]
 
-        # 收集PDB处理结果，并处理FASTA文件
+        # Collect PDB processing results, and process FASTA files
         domain_fasta_sequences = []
         with ThreadPoolExecutor() as fasta_executor:
-            # 提交FASTA处理任务
+            # Submit FASTA processing tasks
             for future in as_completed(pdb_futures):
                 result = future.result()
                 if result:
                     domain_id, pdb_id, ranges = result
-                    # 获取域的FASTA序列
+                    # Get domain FASTA sequence
                     fasta_sequence = process_fasta_for_domain_check(domain_id, pdb_id, ranges, fasta_records)
                     if fasta_sequence:
                         domain_fasta_sequences.append(fasta_sequence)
 
-        # 写入所有的FASTA序列到文件
+        # Write all FASTA sequences to file
         with open(domain_fasta_file, "w") as fasta_out:
             fasta_out.writelines(domain_fasta_sequences)
 
         print("Domain-level PDB and FASTA files have been processed and saved.")
         
     except Exception as e:
-        print(f"发生错误：{e}")
+        print(f"An error occurred: {e}")
         
       
    
@@ -3444,7 +3419,7 @@ def split_domain_by_ted_boundary_and_save_fasta(hnh_cath_in_ted_file, pdb_dir, d
         # Load the HNH_cath_in_ted file
         hnh_cath_df = pd.read_csv(hnh_cath_in_ted_file)
         if 'ted_id' not in hnh_cath_df.columns or 'chopping' not in hnh_cath_df.columns:
-            raise ValueError("在 HNH_cath_in_ted 文件中未找到 'ted_id' 或 'chopping' 列。")
+            raise ValueError("'ted_id' or 'chopping' column not found in HNH_cath_in_ted file.")
 
         # Initialize PDB parser and I/O
         parser = PDB.PDBParser(QUIET=True)
@@ -3461,7 +3436,7 @@ def split_domain_by_ted_boundary_and_save_fasta(hnh_cath_in_ted_file, pdb_dir, d
             pdb_path = os.path.join(pdb_dir, f"{pdb_id}.pdb")
 
             if not os.path.exists(pdb_path):
-                print(f"PDB 文件 {pdb_path} 不存在，跳过。")
+                print(f"PDB file {pdb_path} does not exist, skipping.")
                 continue
 
             # Parse the chopping information (start and end residues)
@@ -3491,62 +3466,64 @@ def split_domain_by_ted_boundary_and_save_fasta(hnh_cath_in_ted_file, pdb_dir, d
             domain_pdb_path = os.path.join(domain_pdb_dir, f"{ted_id}.pdb")
             io.set_structure(domain_structure)
             io.save(domain_pdb_path)
-            print(f"保存域到 {domain_pdb_path}")
+            print(f"Saved domain to {domain_pdb_path}")
 
             # Extract and save the corresponding FASTA sequence for the domain
             extract_fasta_sequence(fasta_file, pdb_id, ted_id, ranges,  domain_fasta_file)
 
     except Exception as e:
-        print(f"发生错误：{e}")
-   
+        print(f"An error occurred: {e}")
+        
+        
+        
 def split_domain_by_ted_boundary(hnh_cath_in_ted_file, pdb_dir, domain_dir):
     """
-    根据 HNH_cath_in_ted 文件中的 chopping 信息，从完整 PDB 数据中提取 domain。
+    Extract domains from complete PDB data based on chopping information in HNH_cath_in_ted file.
 
-    参数：
-        hnh_cath_in_ted_file (str): 包含 ted_id 和 chopping 列的 CSV 文件路径。
-        pdb_dir (str): 保存完整 PDB 文件的目录。
-        domain_dir (str): 保存提取的 domain PDB 文件的目录。
+    Parameters:
+        hnh_cath_in_ted_file (str): CSV file path containing ted_id and chopping columns.
+        pdb_dir (str): Directory storing complete PDB files.
+        domain_dir (str): Directory to save extracted domain PDB files.
 
-    返回：
+    Returns:
         None
     """
     try:
-        # 读取 HNH_cath_in_ted 文件
+        # Read HNH_cath_in_ted file
         hnh_cath_df = pd.read_csv(hnh_cath_in_ted_file)
         if 'ted_id' not in hnh_cath_df.columns or 'chopping' not in hnh_cath_df.columns:
-            raise ValueError("在 HNH_cath_in_ted 文件中未找到 'ted_id' 或 'chopping' 列。")
+            raise ValueError("'ted_id' or 'chopping' column not found in HNH_cath_in_ted file.")
 
-        # 确保输出目录存在
+        # Ensure output directory exists
         os.makedirs(domain_dir, exist_ok=True)
 
-        # 初始化 PDB 解析器
+        # Initialize PDB parser
         parser = PDB.PDBParser(QUIET=True)
         io = PDB.PDBIO()
 
-        # 遍历每一行提取 domain
-        for _, row in tqdm(hnh_cath_df.iterrows(), desc="提取域", total=hnh_cath_df.shape[0]):
+        # Traverse each row to extract domain
+        for _, row in tqdm(hnh_cath_df.iterrows(), desc="Extracting domains", total=hnh_cath_df.shape[0]):
             ted_id = row['ted_id']
             chopping = row['chopping']
 
-            # 提取完整 PDB 文件 ID
+            # Extract complete PDB file ID
             pdb_id = "_".join(ted_id.split('_')[:2])
             pdb_path = os.path.join(pdb_dir, f"{pdb_id}.pdb")
 
             if not os.path.exists(pdb_path):
-                print(f"PDB 文件 {pdb_path} 不存在，跳过。")
+                print(f"PDB file {pdb_path} does not exist, skipping.")
                 continue
 
-            # 解析 PDB 文件
+            # Parse PDB file
             structure = parser.get_structure(pdb_id, pdb_path)
 
-            # 解析 chopping 信息
+            # Parse chopping information
             ranges = []
             for segment in chopping.split('_'):
                 start, end = map(int, segment.split('-'))
                 ranges.append((start, end))
 
-            # 提取指定范围的残基
+            # Extract residues in specified ranges
             domain_structure = PDB.Structure.Structure(ted_id)
             for model in structure:
                 domain_model = PDB.Model.Model(model.id)
@@ -3561,43 +3538,43 @@ def split_domain_by_ted_boundary(hnh_cath_in_ted_file, pdb_dir, domain_dir):
                 if len(domain_model):
                     domain_structure.add(domain_model)
 
-            # 保存提取的 domain 到文件
+            # Save extracted domain to file
             output_path = os.path.join(domain_dir, f"{ted_id}.pdb")
             io.set_structure(domain_structure)
             io.save(output_path)
-            print(f"保存域到 {output_path}")
+            print(f"Saved domain to {output_path}")
 
     except Exception as e:
-        print(f"发生错误：{e}")
+        print(f"An error occurred: {e}")
 
 
 def add_domain_range_with_ted_info(cluster_file, domain_summary_file, output_file, chunksize=100000):
     """
-    扩展 cluster_file 文件中的每一行数据，在 domain_summary_file 中找到与 Cluster_member 对应的行，
-    并将这些行的数据拼接到 cluster_file 中，输出为新的文件。
+    Expand each row of data in cluster_file, find rows corresponding to Cluster_member in domain_summary_file,
+    and concatenate these rows' data to cluster_file, output as new file.
 
-    参数：
-        cluster_file (str): 包含 Cluster_representative 和 Cluster_member 列的 CSV 文件路径。
-        domain_summary_file (str): TED domain 数据文件路径。
-        output_file (str): 保存扩展后数据的文件路径。
-        chunksize (int): 每次读取 domain_summary_file 的行数。
+    Parameters:
+        cluster_file (str): CSV file path containing Cluster_representative and Cluster_member columns.
+        domain_summary_file (str): TED domain data file path.
+        output_file (str): File path to save expanded data.
+        chunksize (int): Number of rows to read each time from domain_summary_file.
 
-    返回：
+    Returns:
         None
     """
     try:
-        # 读取 Cluster 文件
+        # Read Cluster file
         cluster_df = pd.read_csv(cluster_file)
         if 'Cluster_member' not in cluster_df.columns:
-            raise ValueError("在 cluster_file 中未找到 'Cluster_member' 列。")
+            raise ValueError("'Cluster_member' column not found in cluster_file.")
 
-        # 获取所有 Cluster_member 的唯一值
+        # Get all unique Cluster_member values
         cluster_members = set(cluster_df['Cluster_member'].dropna().unique())
 
-        # 初始化扩展数据存储
+        # Initialize expanded data storage
         expanded_data = []
 
-        # 定义 domain_summary_file 的列名
+        # Define column names for domain_summary_file
         column_names = [
             "ted_id", "md5_domain", "consensus_level", "chopping", "nres_domain",
             "num_segments", "plddt", "num_helix_strand_turn", "num_helix", "num_strand",
@@ -3606,31 +3583,31 @@ def add_domain_range_with_ted_info(cluster_file, domain_summary_file, output_fil
             "tax_scientific_name", "tax_lineage"
         ]
 
-        # 分块读取 domain_summary_file 并匹配数据
+        # Read domain_summary_file in chunks and match data
         for chunk in tqdm(pd.read_csv(domain_summary_file, sep='\t', names=column_names, header=0, chunksize=chunksize),
                           desc="Processing domain summary file"):
-            # 筛选出与 cluster_members 匹配的行
+            # Filter rows matching cluster_members
             filtered_chunk = chunk[chunk['ted_id'].isin(cluster_members)]
 
-            # 拼接到结果数据
+            # Concatenate to result data
             if not filtered_chunk.empty:
                 expanded_data.append(filtered_chunk)
 
-        # 合并所有匹配的行
+        # Merge all matching rows
         if expanded_data:
             expanded_df = pd.concat(expanded_data)
 
-            # 按 Cluster_member 将扩展数据与 cluster_file 合并
+            # Merge expanded data with cluster_file by Cluster_member
             merged_df = cluster_df.merge(expanded_df, left_on='Cluster_member', right_on='ted_id', how='left')
 
-            # 保存合并后的数据到输出文件
+            # Save merged data to output file
             merged_df.to_csv(output_file, index=False)
-            print(f"扩展后的数据已保存到 {output_file}。")
+            print(f"Expanded data saved to {output_file}.")
         else:
-            print("未找到匹配的 TED 信息。")
+            print("No matching TED information found.")
 
     except Exception as e:
-        print(f"发生错误：{e}")
+        print(f"An error occurred: {e}")
         
 # Function to parse a single query_id.txt file
 def parse_dali_result_txt(file_path):
@@ -3724,10 +3701,10 @@ def dali_results_to_csv(directory_path, output_csv_path):
 
 
 def merge_results_by_source_target_new(FS_cath_teddb, TM_cath_teddb, Dali_cath_teddb, output_csv):
-    # 初始化df_merged为空DataFrame
+    # Initialize df_merged as empty DataFrame
     df_merged = pd.DataFrame()
 
-    # 读取FS_cath_teddb，如果路径不为空且文件存在且不为空
+    # Read FS_cath_teddb, if path is not empty and file exists and is not empty
     if FS_cath_teddb and os.path.exists(FS_cath_teddb):
         df1 = pd.read_csv(FS_cath_teddb)
         if not df1.empty:
@@ -3739,7 +3716,7 @@ def merge_results_by_source_target_new(FS_cath_teddb, TM_cath_teddb, Dali_cath_t
             else:
                 df_merged = df_merged.merge(df1_rename, on=['source', 'target'], how='outer')
 
-    # 读取TM_cath_teddb，如果路径不为空且文件存在且不为空
+    # Read TM_cath_teddb, if path is not empty and file exists and is not empty
     if TM_cath_teddb and os.path.exists(TM_cath_teddb):
         df2 = pd.read_csv(TM_cath_teddb)
         if not df2.empty:
@@ -3751,7 +3728,7 @@ def merge_results_by_source_target_new(FS_cath_teddb, TM_cath_teddb, Dali_cath_t
             else:
                 df_merged = df_merged.merge(df2_rename, on=['source', 'target'], how='outer')
 
-    # 读取Dali_cath_teddb，如果路径不为空且文件存在且不为空
+    # Read Dali_cath_teddb, if path is not empty and file exists and is not empty
     if Dali_cath_teddb and os.path.exists(Dali_cath_teddb):
         df3 = pd.read_csv(Dali_cath_teddb)
         if not df3.empty:
@@ -3763,36 +3740,36 @@ def merge_results_by_source_target_new(FS_cath_teddb, TM_cath_teddb, Dali_cath_t
             else:
                 df_merged = df_merged.merge(df3_rename, on=['source', 'target'], how='outer')
 
-    # 如果df_merged不是空的，执行数值处理和保存
+    # If df_merged is not empty, perform numerical processing and save
     if not df_merged.empty:
         df_merged['FS_weight'] = df_merged.get('FS_weight', pd.Series()).astype(float).round(5)
         df_merged['TM_weight'] = df_merged.get('TM_weight', pd.Series()).astype(float).round(5)
         df_merged['Dali_weight'] = df_merged.get('Dali_weight', pd.Series()).astype(float).round(5)
         
-        # 保存合并后的数据为CSV文件
+        # Save merged data as CSV file
         df_merged.to_csv(output_csv, index=False, encoding='utf-8-sig')
-        print(f"数据已经成功合并并保存为 {output_csv}")
+        print(f"Data successfully merged and saved as {output_csv}")
     else:
-        print("没有可合并的数据，输出文件为空。")
+        print("No data to merge, output file is empty.")
 
 
 def merge_results_by_source_target(FS_cath_teddb, TM_cath_teddb, Dali_cath_teddb, output_csv):
-    # 初始化df_merged为空DataFrame
+    # Initialize df_merged as empty DataFrame
     df_merged = pd.DataFrame()
     
-    # 读取三个CSV文件
+    # Read three CSV files
     df1 = pd.read_csv(FS_cath_teddb)
     df2 = pd.read_csv(TM_cath_teddb)
     df3 = pd.read_csv(Dali_cath_teddb)
     df3['source'] = df3['source'].str[:-1]
     df3['target'] = df3['target'].str[:-2]
     
-    # 保留source和targe列并重命名其他列，分别加上FS_、TM_、Dali_前缀
+    # Keep source and target columns and rename other columns, add FS_, TM_, Dali_ prefixes respectively
     df1_rename = df1.rename(columns={col: f"FS_{col}" for col in df1.columns if col not in ['source', 'target']})
     df2_rename = df2.rename(columns={col: f"TM_{col}" for col in df2.columns if col not in ['source', 'target']})
     df3_rename = df3.rename(columns={col: f"Dali_{col}" for col in df3.columns if col not in ['source', 'target']})
     
-    # 合并数据集，优先按source和targe列合并
+    # Merge datasets, prioritize merging by source and target columns
     df_merged = df1_rename.merge(df2_rename, on=['source', 'target'], how='outer')
     df_merged = df_merged.merge(df3_rename, on=['source', 'target'], how='outer')
     
@@ -3805,23 +3782,23 @@ def merge_results_by_source_target(FS_cath_teddb, TM_cath_teddb, Dali_cath_teddb
     df_merged['Dali_weight'] = df_merged['Dali_weight'].round(5)
     
     
-    # 将合并后的数据保存为新的CSV文件
+    # Save merged data as new CSV file
     df_merged.to_csv(output_csv, index=False, encoding='utf-8-sig')
 
-    print(f"数据已经成功合并并保存为 {output_csv}")
+    print(f"Data successfully merged and saved as {output_csv}")
 
 
 def filter_sequence_len_for_csv(csv1, column_name, value1, value2, csv2):
     """
-    从csv1文件中读取指定列，筛选出大于value1且小于value2的行，保存到csv2文件。
+    Read specified column from csv1 file, filter rows greater than value1 and less than value2, save to csv2 file.
     
-    :param csv1: 输入CSV文件路径
-    :param column_name: 要筛选的列名
-    :param value1: 下限值（大于此值）
-    :param value2: 上限值（小于此值）
-    :param csv2: 输出CSV文件路径
+    :param csv1: Input CSV file path
+    :param column_name: Column name to filter
+    :param value1: Lower limit value (greater than this value)
+    :param value2: Upper limit value (less than this value)
+    :param csv2: Output CSV file path
     """
-    # 读取csv1文件
+    # Read csv1 file
     df = pd.read_csv(csv1)
     df['FS_weight'] = df['FS_weight'].astype(float)
     df['TM_weight'] = df['TM_weight'].astype(float)
@@ -3831,16 +3808,16 @@ def filter_sequence_len_for_csv(csv1, column_name, value1, value2, csv2):
     df['TM_weight'] = df['TM_weight'].round(5)
     df['Dali_weight'] = df['Dali_weight'].round(5)
     
-    # 确保目标列是数值型
-    df[column_name] = pd.to_numeric(df[column_name], errors='coerce')  # 将无法转换为数字的值设置为NaNdf['TM_weight'] = df['TM_weight'].astype(float)
+    # Ensure target column is numeric
+    df[column_name] = pd.to_numeric(df[column_name], errors='coerce')  # Set values that cannot be converted to numbers as NaNdf['TM_weight'] = df['TM_weight'].astype(float)
 
-    # 筛选大于value1且小于value2的行
+    # Filter rows greater than value1 and less than value2
     filtered_df = df[(df[column_name] >= value1) & (df[column_name] <= value2)]
     
-    # 将结果保存到csv2文件
+    # Save result to csv2 file
     filtered_df.to_csv(csv2, index=False,float_format='%.5f')
     
-    print(f"筛选后的数据已经保存到 {csv2}")
+    print(f"Filtered data has been saved to {csv2}")
 
 
 import requests
@@ -3860,18 +3837,18 @@ def fetch_uniprot_batch(ids, fields, out_path, batch_size=10):
                 "query": f"({query})"
             }
 
-            # 打印当前查询的 ID 数量
+            # Print current query ID count
             print(f"Requesting batch {i//batch_size + 1} with {len(chunk)} IDs.")
 
             r = requests.get(base_url, params=params)
 
-            # 检查请求是否成功
+            # Check if request was successful
             if r.status_code != 200:
                 print(f"Error: Received status code {r.status_code} for batch {i//batch_size + 1}")
-                continue  # 如果请求失败，跳过该批次
+                continue  # If request fails, skip this batch
 
             r_text = r.text.strip()
-            if not r_text:  # 如果返回为空，说明没有结果
+            if not r_text:  # If return is empty, means no results
                 print(f"Warning: No results found for batch {i//batch_size + 1}")
                 continue
 
@@ -3883,7 +3860,7 @@ def fetch_uniprot_batch(ids, fields, out_path, batch_size=10):
             else:
                 out.write("\n".join(lines[1:]) + "\n")
 
-    # 读取保存的结果
+    # Read saved results
     df = pd.read_csv(out_path, sep="\t")
     return df
 
@@ -3894,45 +3871,45 @@ def fetch_uniprot_batch(ids, fields, out_path, batch_size=10):
     
 def filter_weight_for_csv(csv1,  value1, value2,  value3, csv2):
     """
-    从csv1文件中筛选出符合条件的行，保存到csv2文件。
+    Filter rows meeting conditions from csv1 file, save to csv2 file.
     
-    :param csv1: 输入CSV文件路径
-    :param value1: FS_weight列的下限值（大于等于此值）
-    :param value2: TM_weight列的下限值（大于等于此值）
-    :param value3: Dali_weight列的下限值（大于等于此值）
-    :param csv2: 输出CSV文件路径
+    :param csv1: Input CSV file path
+    :param value1: FS_weight column lower limit value (greater than or equal to this value)
+    :param value2: TM_weight column lower limit value (greater than or equal to this value)
+    :param value3: Dali_weight column lower limit value (greater than or equal to this value)
+    :param csv2: Output CSV file path
     """
-    # 读取csv1文件
+    # Read csv1 file
     df = pd.read_csv(csv1)
     
-    """ 查看某个值的分布
+    """ View distribution of a certain value
     df['FS_weight'] = pd.to_numeric(df['FS_weight'], errors='coerce')
     bins = pd.cut(df['FS_weight'], bins=10)
     value_counts = bins.value_counts(normalize=True).sort_index()
     print(value_counts)
     """
     
-    # 将 None 或 NaN 值替换为 0
+    # Replace None or NaN values with 0
     df['FS_weight'] = df['FS_weight'].fillna(0)
     df['TM_weight'] = df['TM_weight'].fillna(0)
     df['Dali_weight'] = df['Dali_weight'].fillna(0)
     
-    # 筛选满足条件的行
+    # Filter rows meeting conditions
     filtered_df = df[
         (df['FS_weight'] >= value1) &
         (df['TM_weight'] >= value2) &
         (df['Dali_weight'] >= value3)
     ]
     
-    # 将符合条件的行保存为csv2文件
+    # Save qualified rows as csv2 file
     filtered_df.to_csv(csv2, index=False)
     
-    print(f"符合条件的数据已经保存到 {csv2}")
+    print(f"Qualified data has been saved to {csv2}")
 
 def update_data_with_wet_id_batch2(data1_path, data2_path):
-    # 读取data2文件（假设是Excel）
+    # Read data2 file (assume Excel)
     data2 = pd.read_excel(data2_path)
-    # 提取data2的source和target列的唯一标记以及wet_ID
+    # Extract unique markers from data2's source and target columns and wet_ID
     data2['unique_key'] = data2['source'].str.split('_').str[0] + '_'+ data2['target'].str.split('-').str[1]
     #wet_id_dict = dict(zip(data2['unique_key'], data2['wet_ID']))
     wet_id_dict = (
@@ -3941,39 +3918,39 @@ def update_data_with_wet_id_batch2(data1_path, data2_path):
     .agg(lambda ids: '+'.join(ids.astype(str)))
     .to_dict()
     )
-    # 判断data1是Excel还是CSV文件
-    if data1_path.endswith('.xlsx'):  # 如果是Excel文件
+    # Determine if data1 is Excel or CSV file
+    if data1_path.endswith('.xlsx'):  # If Excel file
 
-        # 读取Excel文件中的所有sheet
+        # Read all sheets in Excel file
         excel_file = pd.ExcelFile(data1_path)
         os.remove( data1_path)
         with pd.ExcelWriter(data1_path, engine='openpyxl') as writer:
             for sheet_name in excel_file.sheet_names:
                 df = excel_file.parse(sheet_name)
-                # 为每一行添加wet_ID列
+                # Add wet_ID column for each row
                 df['unique_key'] = df['source'].str.split('_').str[0] + '_'+ df['target'].str.split('-').str[1]
-                df['wet_ID'] = df['unique_key'].map(wet_id_dict)  # 根据unique_key映射wet_ID
+                df['wet_ID'] = df['unique_key'].map(wet_id_dict)  # Map wet_ID based on unique_key
                 
-                # 删除中间列 unique_key
+                # Delete intermediate column unique_key
                 df.drop(columns=['unique_key'], inplace=True)
                 df = df[['wet_ID'] + [col for col in df.columns if col != 'wet_ID']]
-                # 保存更新后的数据到原Excel文件中
+                # Save updated data to original Excel file
                 df.to_excel(writer, sheet_name=sheet_name+'_wet_ID', index=False)
             
-    elif data1_path.endswith('.csv'):  # 如果是CSV文件
-        # 读取CSV文件
+    elif data1_path.endswith('.csv'):  # If CSV file
+        # Read CSV file
         df = pd.read_csv(data1_path)
-        # 为每一行添加wet_ID列
+        # Add wet_ID column for each row
         df['unique_key'] = df['source'].str.split('_').str[0] + '_'+df['target'].str.split('-').str[1]
-        df['wet_ID'] = df['unique_key'].map(wet_id_dict)  # 根据unique_key映射wet_ID
+        df['wet_ID'] = df['unique_key'].map(wet_id_dict)  # Map wet_ID based on unique_key
         
-        # 删除中间列 unique_key
+        # Delete intermediate column unique_key
         df.drop(columns=['unique_key'], inplace=True)
         df = df[['wet_ID'] + [col for col in df.columns if col != 'wet_ID']]
-        # 保存更新后的CSV文件
+        # Save updated CSV file
         df.to_csv(data1_path, index=False)
     
-    print(f"文件 {data1_path} 已更新。")
+    print(f"File {data1_path} has been updated.")
     
 import requests
 import time
@@ -3991,29 +3968,29 @@ def filter_for_nonCas9(csv_path, output_csv2, col_name,
                        filter_rules=None, 
                        dali_range=(0, float('inf'))):
     """
-    读取 csv_path 文件，按规则过滤：
-    1) target_info 列：根据 filter_rules 过滤掉包含关键字的行。
-       filter_rules 是一个列表，元素间为或关系；每个元素是字符串列表，内部为 and 关系。
-       例如: [["crispr",], ["HNH","domain-containing"]]
-    2) domain_seq_sim_Dali 列：保留值在 dali_range [A1, A2] 范围内的行。
-    保存过滤后结果到 output_csv2。
+    Read csv_path file, filter according to rules:
+    1) target_info column: Filter out rows containing keywords based on filter_rules.
+       filter_rules is a list, elements are OR relationship; each element is string list, internal is AND relationship.
+       Example: [["crispr",], ["HNH","domain-containing"]]
+    2) domain_seq_sim_Dali column: Keep rows with values in dali_range [A1, A2] range.
+    Save filtered result to output_csv2.
     """
     #df = pd.read_csv(csv_path)
     df = pd.read_csv(csv_path, encoding='latin1')
 
-    # 文本过滤
+    # Text filtering
     if filter_rules is None:
         filter_rules = [["crispr"], ["csn1"], ["cas9"], ["HNH", "domain-containing"]]
         
         
-    # 如果没有 pdb_id 列，先补一个空列
+    # If no pdb_id column, first add an empty column
     if 'pdb_id' not in df.columns:
         df['pdb_id'] = ''
 
-    # 标记免过滤行：pdb_id 包含 '_D'
+    # Mark exempt rows: pdb_id contains '_D'
     mask_exempt = df['pdb_id'].astype(str).str.contains('_D')
 
-    # 定义文本过滤函数
+    # Define text filtering function
     def to_exclude(text):
         txt = str(text).lower()
         for rule in filter_rules:
@@ -4021,40 +3998,40 @@ def filter_for_nonCas9(csv_path, output_csv2, col_name,
                 return True
         return False
 
-    # 对不免过滤的行执行文本过滤（True 表示保留）
+    # Perform text filtering on non-exempt rows (True means keep)
     mask_text = (~mask_exempt) & df[col_name].apply(lambda x: not to_exclude(x))
 
-    # Dali 范围过滤（True 表示保留）
+    # Dali range filtering (True means keep)
     a1, a2 = dali_range
     mask_dali = (~mask_exempt) & df['domain_seq_sim_Dali'].between(a1, a2, inclusive='both')
 
-    # 最终保留：免过滤行 OR (文本 & Dali)
+    # Final keep: exempt rows OR (text & Dali)
     final_mask = mask_exempt | (mask_text & mask_dali)
     df_filtered = df[final_mask].copy()
 
-    # 写出
+    # Write out
     df_filtered.to_csv(output_csv2, index=False)
     print(f"Filtered data saved to {output_csv2}: {len(df_filtered)} rows.")
 
 from Bio.PDB import MMCIFParser, PDBIO
 
 def convert_cif_to_pdb(input_dir, output_dir):
-    # 确保输出目录存在，如果不存在则创建
+    # Ensure output directory exists, create if not exists
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # 创建解析器和输出对象
+    # Create parser and output objects
     parser = MMCIFParser()
     io = PDBIO()
 
-    # 遍历输入目录中的所有 .cif 文件
+    # Traverse all .cif files in input directory
     for filename in os.listdir(input_dir):
         if filename.endswith(".cif"):
             cif_path = os.path.join(input_dir, filename)
             pdb_filename = filename.replace(".cif", ".pdb")
             pdb_path = os.path.join(output_dir, pdb_filename)
 
-            # 解析 .cif 文件并保存为 .pdb 文件
+            # Parse .cif file and save as .pdb file
             try:
                 structure = parser.get_structure(filename, cif_path)
                 io.set_structure(structure)
@@ -4066,16 +4043,16 @@ def convert_cif_to_pdb(input_dir, output_dir):
 
 def create_fs_cytoscape_network(fs_file, output_file):
     """
-    从Foldseek结果的.m8文件创建Cytoscape网络文件。
+    Create Cytoscape network file from Foldseek result .m8 file.
 
-    :param fs_file: Foldseek结果的.m8文件路径
-    :param output_file: 输出的Cytoscape网络文件路径
+    :param fs_file: Foldseek result .m8 file path
+    :param output_file: Output Cytoscape network file path
     """
     try:
-        # 检查文件是否存在且不为空
+        # Check if file exists and is not empty
         if os.path.exists(fs_file) and os.path.getsize(fs_file) > 0:
-            # 读取Foldseek结果文件
-            # 读取Foldseek结果文件
+            # Read Foldseek result file
+            # Read Foldseek result file
             fs_results = pd.read_csv(fs_file, sep="\t", header=None)
             #fs_results.columns = ['query', 'target', 'qstart', 'qend', 'qlen', 
             #                      'tstart', 'tend', 'tlen', 'qcov', 'tcov', 
@@ -4086,58 +4063,58 @@ def create_fs_cytoscape_network(fs_file, output_file):
                                 'ttmscore','u','t','lddt','lddtfull','prob']
 
             fs_results = fs_results.drop(columns=['qca', 'tca','lddt','lddtfull'])
-            # 去掉 query 和 target 列中 '_' 及其后面的字符
-            #fs_results.loc[:, 'query'] = fs_results['query'].str.split('_').str[0] # HNH的过程不需要去除'_' 及其后面的字符
-            #fs_results.loc[:, 'target'] = fs_results['target'].str.split('_').str[0]# HNH的过程不需要去除'_' 及其后面的字符
+            # Remove '_' and characters after it in query and target columns
+            #fs_results.loc[:, 'query'] = fs_results['query'].str.split('_').str[0] # HNH process doesn't need to remove '_' and characters after
+            #fs_results.loc[:, 'target'] = fs_results['target'].str.split('_').str[0]# HNH process doesn't need to remove '_' and characters after
             
-            # 去掉target=source的行
-            print(f"len of ori fs{len(fs_results)}")
+            # Remove rows where target=source
+            print(f"len of original fs{len(fs_results)}")
             fs_results = fs_results[fs_results['query'] != fs_results['target']]
             print(f"len of target!=source fs{len(fs_results)}")
-            # 创建临时的排序键（不保存为新列）
+            # Create temporary sort key (not saved as new column)
             """
             fs_results['_key'] = fs_results.apply(
                 lambda x: tuple(sorted([x['query'], x['target']])), 
                 axis=1
             )
 
-            # 删除重复行
+            # Remove duplicate rows
             fs_results = fs_results.drop_duplicates(subset=['_key'])
 
-            # 删除临时列
+            # Remove temporary column
             fs_results = fs_results.drop('_key', axis=1)
             print(f"len of final fs{len(fs_results)}")
             """
             fs_results['weight'] = (fs_results['qcov'] + fs_results['tcov']) / 2
-            # 调整列的顺序
+            # Adjust column order
             cols_order = ['query', 'target', 'weight', 'evalue', 'bits', 'qcov', 'tcov']
             other_cols = [col for col in fs_results.columns if col not in cols_order]
             fs_results = fs_results[cols_order + other_cols]
 
-            # 将 'query' 列重命名为 'source'
+            # Rename 'query' column to 'source'
             fs_results = fs_results.rename(columns={'query': 'source'})
 
             fs_results.to_csv(output_file, index=False)
         else:
-            print(f"警告: Foldseek结果文件 {fs_file} 不存在或为空，创建一个空的结果文件")
-            # 创建一个空的DataFrame并保存
+            print(f"Warning: Foldseek result file {fs_file} does not exist or is empty, creating empty result file")
+            # Create empty DataFrame and save
             empty_df = pd.DataFrame(columns=['source', 'target', 'weight', 'alntmscore'])
             empty_df.to_csv(output_file, index=False)
             return
     
     except pd.errors.EmptyDataError:
-        print(f"警告: Foldseek结果文件 {fs_file} 为空，创建一个空的结果文件")
-        # 创建一个空的DataFrame并保存
+        print(f"Warning: Foldseek result file {fs_file} is empty, creating empty result file")
+        # Create empty DataFrame and save
         empty_df = pd.DataFrame(columns=['source', 'target', 'weight', 'alntmscore'])
         empty_df.to_csv(output_file, index=False)
         return
 
-def convert_pdb_to_foldseek_db(pdb_dir, fs_db_dir, fs_db_name="fs_db"):
+def convert_pdb_to_foldseek_db(fs_bin,pdb_dir, fs_db_dir, fs_db_name="fs_db"):
     fs_querydb_path = os.path.join(fs_db_dir, fs_db_name+".db")
     ensure_dir(fs_db_dir)
     subprocess.run(
         [
-            FS_BINARY_PATH,
+            fs_bin,
             "createdb",
             "--input-format",
             "1",
@@ -4162,14 +4139,14 @@ DEFAULT_FS_FORMAT_OUTPUT = "query,target,fident,alnlen,mismatch,gapopen,qstart,q
 
 
   
-def run_foldseek(fs_querydb, fs_targetdb, fs_rawdata="./fs_query_structures.raw", fs_results="./fs_query_results.m8", tmp_dir=FS_TMP_PATH, cov_mode=DEFAULT_FS_COV_MODE, coverage=FS_OVERLAP, alignment_type=DEFAULT_FS_ALIGNER, fs_bin_path=FS_BINARY_PATH):
+def run_foldseek(fs_bin,fs_querydb, fs_targetdb, fs_rawdata="./fs_query_structures.raw", fs_results="./fs_query_results.m8", tmp_dir=FS_TMP_PATH, cov_mode=DEFAULT_FS_COV_MODE, coverage=FS_OVERLAP, alignment_type=DEFAULT_FS_ALIGNER):
     "Run Foldseek Query DB against Target DB"
     #alignment_type = 1  0：3Di Gotoh-Smith-Waterman（局部，不推荐），1：TMalign（全局，慢），2：3Di+AA Gotoh-Smith-Waterman（局部，默认）
     #ensure_dir(fs_results)
     assert str(fs_rawdata) != ''
     subprocess.run(
         [ "nice", "-n", "0", "ionice", "-c", "2", "-n", "0",
-            fs_bin_path,
+            fs_bin,
             "search",
             fs_querydb,
             fs_targetdb,
@@ -4198,7 +4175,7 @@ def run_foldseek(fs_querydb, fs_targetdb, fs_rawdata="./fs_query_structures.raw"
     )
     subprocess.run(
         ["nice", "-n", "0", "ionice", "-c", "2", "-n", "0",
-            fs_bin_path,
+            fs_bin,
             "convertalis",
             fs_querydb,
             fs_targetdb,
@@ -4234,4 +4211,3 @@ def merge_fasta_files(fasta_files, output_file):
     
     logger.info(f"Merged FASTA file created: {output_file}")
     return output_file
-    
