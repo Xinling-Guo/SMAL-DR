@@ -40,7 +40,7 @@ DEFAULT_FS_ALIGNER = "2" # 3di+AA (fast, accurate)
 DEFAULT_FS_FORMAT_OUTPUT = "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,qlen,tstart,tend,tlen,qcov,tcov,bits,evalue,qca,tca,alntmscore,qtmscore,ttmscore,u,t,lddt,lddtfull,prob"
 
 def convert_fasta_to_mmseqs2_db(fasta_file, db_name="./fasta_db"):
-    """将FASTA文件转换为MMseqs2数据库"""
+    """Convert FASTA file to MMseqs2 database"""
     db_path = db_name + ".db"
    
     subprocess.run(
@@ -57,7 +57,7 @@ def convert_fasta_to_mmseqs2_db(fasta_file, db_name="./fasta_db"):
     print(f"Database created: {db_path}")
 
 def create_mmseqs2_index(db_name):
-    """为数据库创建索引"""
+    """Create index for database"""
     index_name = f"{db_name}_index"
     db_Name = f"{db_name}.db"
     subprocess.run(
@@ -75,7 +75,7 @@ def create_mmseqs2_index(db_name):
 
    
 def run_mmseqs2_search(query_db, target_db, result_file,tmp_dir):
-    """运行MMseqs2的搜索"""
+    """Run MMseqs2 search"""
     assert os.path.exists(query_db), f"Query DB {query_db} does not exist."
     assert os.path.exists(target_db), f"Target DB {target_db} does not exist."
     output_file = result_file
@@ -88,7 +88,7 @@ def run_mmseqs2_search(query_db, target_db, result_file,tmp_dir):
             result_file,
             tmp_dir,
             "--threads",
-            "1",  # 可以根据需要调整线程数
+            "1",  # Can adjust thread count as needed
         ],
         stderr=subprocess.DEVNULL,
         check=True,
@@ -97,7 +97,7 @@ def run_mmseqs2_search(query_db, target_db, result_file,tmp_dir):
     print("MMseqs2 search done")    
 
 def get_mmseqs2_results(query_db, target_db, results_search_dir, output_file):
-    """转换比对结果为可读格式"""
+    """Convert alignment results to readable format"""
     
     result = subprocess.run(
     [
@@ -181,17 +181,17 @@ def extract_aligned_regions_for_tm_align(query_seq, target_seq, alignment):
 
 def parse_TMalign_results(txt_file): 
     """
-    解析 TM-align 的 txt 文件，提取相关信息
-    :param txt_file: TM-align 输出的 txt 文件路径
-    :return: 提取的相关信息，字典格式
+    Parse TM-align txt file and extract relevant information
+    :param txt_file: TM-align output txt file path
+    :return: Extracted relevant information in dictionary format
     """
     with open(txt_file, 'r') as f:
         content = f.read()
     with open(txt_file, 'r') as f:
-        # 读取文件所有行，存储在列表中
+        # Read all lines of file, store in list
         content2 = f.readlines()
 
-    # 使用正则表达式提取信息
+    # Use regular expressions to extract information
     protein1 = re.search(r"Name of Chain_1: .*/([^/]+)\.pdb", content)
     protein2 = re.search(r"Name of Chain_2: (.+)", content)
     length_chain1 = re.search(r"Length of Chain_1: (\d+) residues", content)
@@ -201,11 +201,11 @@ def parse_TMalign_results(txt_file):
     tm_score1 = re.search(r"TM-score= (\S+) \(if normalized by length of Chain_1", content)
     tm_score2 = re.search(r"TM-score= (\S+) \(if normalized by length of Chain_2", content)
 
-    # 如果没有找到相应的字段，则返回None
+    # If corresponding fields not found, return None
     if not all([protein1, protein2, length_chain1, length_chain2, aligned_length, rmsd, tm_score1, tm_score2]):
         return None
 
-    # 获取提取的值
+    # Get extracted values
     protein1 = os.path.basename(protein1.group(1)).replace(".pdb", "")
     protein2 = os.path.basename(protein2.group(1)).replace(".pdb", "")
     length_chain1 = int(length_chain1.group(1))
@@ -214,12 +214,12 @@ def parse_TMalign_results(txt_file):
     tm_score1 = float(tm_score1.group(1))
     tm_score2 = float(tm_score2.group(1))
     if rmsd:
-        # 去掉可能的逗号并转换为浮点数
+        # Remove possible commas and convert to float
         rmsd = float(rmsd.group(1).strip(','))
     else:
         print("RMSD not found.")
 
-    # 计算两个TM-score的平均值作为weight
+    # Calculate average of two TM-scores as weight
     ave_weight = (tm_score1 + tm_score2) / 2
     weight = max(tm_score1 , tm_score2)
 
@@ -228,16 +228,16 @@ def parse_TMalign_results(txt_file):
     i_align = 0
     for i, line in enumerate(content2):
         if align_keyword in line:
-            i_align = i  # 返回行号，行号是从 0 开始的
+            i_align = i  # Return line number, line numbers start from 0
     if i_align > 0 :
         query_seq = content2[i_align+1]
         target_seq = content2[i_align+3]
         alignment = content2[i_align+2]
         aligned_regions = extract_aligned_regions_for_tm_align(query_seq, target_seq, alignment)
     else:
-        print(f"{protein1}vs{protein2} has no alinged sequence")
+        print(f"{protein1}vs{protein2} has no aligned sequence")
 
-    # 返回结果
+    # Return result
     return {
         "source": protein1,
         "target": protein2,
@@ -255,14 +255,14 @@ def parse_TMalign_results(txt_file):
 
 def parse_TMalign_results0(txt_file):
     """
-    解析 TM-align 的 txt 文件，提取相关信息
-    :param txt_file: TM-align 输出的 txt 文件路径
-    :return: 提取的相关信息，字典格式
+    Parse TM-align txt file and extract relevant information
+    :param txt_file: TM-align output txt file path
+    :return: Extracted relevant information in dictionary format
     """
     with open(txt_file, 'r') as f:
         content = f.read()
 
-    # 使用正则表达式提取信息
+    # Use regular expressions to extract information
     #protein1 = re.search(r"Name of Chain_1: (.+)", content)
     protein1 = re.search(r"Name of Chain_1: .*/([^/]+)\.pdb", content)
     protein2 = re.search(r"Name of Chain_2: (.+)", content)
@@ -273,11 +273,11 @@ def parse_TMalign_results0(txt_file):
     tm_score1 = re.search(r"TM-score= (\S+) \(if normalized by length of Chain_1", content)
     tm_score2 = re.search(r"TM-score= (\S+) \(if normalized by length of Chain_2", content)
 
-    # 如果没有找到相应的字段，则返回None
+    # If corresponding fields not found, return None
     if not all([protein1, protein2, length_chain1, length_chain2, aligned_length, rmsd, tm_score1, tm_score2]):
         return None
 
-    # 获取提取的值
+    # Get extracted values
     protein1 = os.path.basename(protein1.group(1)).replace(".pdb", "")
     protein2 = os.path.basename(protein2.group(1)).replace(".pdb", "")
     length_chain1 = int(length_chain1.group(1))
@@ -286,16 +286,16 @@ def parse_TMalign_results0(txt_file):
     tm_score1 = float(tm_score1.group(1))
     tm_score2 = float(tm_score2.group(1))
     if rmsd:
-        # 去掉可能的逗号并转换为浮点数
+        # Remove possible commas and convert to float
         rmsd = float(rmsd.group(1).strip(','))
         #print(f"RMSD: {rmsd}")
     else:
         print("RMSD not found.")
 
-    # 计算两个TM-score的平均值作为weight
+    # Calculate average of two TM-scores as weight
     weight = (tm_score1 + tm_score2) / 2
 
-    # 返回结果
+    # Return result
     return {
         "source": protein1,
         "target": protein2,
@@ -309,27 +309,27 @@ def parse_TMalign_results0(txt_file):
     }
 def run_TM_align(TM_align_bin, structure1, structure2, output_dir):
     """
-    使用 TM-align 计算两个蛋白质结构文件的相似性。
-    :param structure1: 第一个结构文件路径
-    :param structure2: 第二个结构文件路径
-    :param output_dir: 输出结果存放目录
-    :return: TM-align 输出文件的路径
+    Use TM-align to calculate similarity between two protein structure files.
+    :param structure1: First structure file path
+    :param structure2: Second structure file path
+    :param output_dir: Output result storage directory
+    :return: TM-align output file path
     """
-    # 确保输出目录存在
+    # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
     
     try:
-        # 运行 TM-align
+        # Run TM-align
         output_file = os.path.join(output_dir, f"{os.path.basename(structure1)}_vs_{os.path.basename(structure2)}.txt")
         
-        # 调试输出构建的命令
+        # Debug output of constructed command
         cmd = [TM_align_bin, structure1, structure2]
 
-        # 使用 subprocess 执行命令，避免使用 shell=True
+        # Use subprocess to execute command, avoid using shell=True
         with open(output_file, "w") as f_out:
             subprocess.run(cmd, stdout=f_out, stderr=subprocess.PIPE, check=True)
         
-        return (structure1, structure2, output_file)  # 返回结构体文件路径和输出文件路径
+        return (structure1, structure2, output_file)  # Return structure file paths and output file path
     
     except subprocess.CalledProcessError as e:
         logging.error(f"Error running TM-align: {e}")
@@ -338,37 +338,37 @@ def run_TM_align(TM_align_bin, structure1, structure2, output_dir):
 
 def run_TM_align_batch_target_query_parallel(TM_align_bin, query_structure_dir, target_structure_dir, output_dir, batch_size=1000, num_workers=64):
     """
-    比较指定目录下的所有查询蛋白质结构文件和目标蛋白质结构文件，计算它们两两之间的 TM-score，分批次运行。
-    :param query_structure_dir: 查询蛋白质结构文件存放目录
-    :param target_structure_dir: 目标蛋白质结构文件存放目录
-    :param output_dir: 结果输出目录
-    :param batch_size: 每批次运行的任务数
-    :param num_workers: 并行工作进程数
+    Compare all query protein structure files and target protein structure files in specified directories, calculate TM-scores between all pairs, run in batches.
+    :param query_structure_dir: Query protein structure file storage directory
+    :param target_structure_dir: Target protein structure file storage directory
+    :param output_dir: Result output directory
+    :param batch_size: Number of tasks per batch
+    :param num_workers: Number of parallel worker processes
     """
-    # 获取查询目录中的所有文件
-    query_files = [f for f in os.listdir(query_structure_dir) if f.endswith('.pdb')]  # 假设是 PDB 格式文件
+    # Get all files in query directory
+    query_files = [f for f in os.listdir(query_structure_dir) if f.endswith('.pdb')]  # Assume PDB format files
     query_paths = [os.path.join(query_structure_dir, f) for f in query_files]
 
-    # 获取目标目录中的所有文件
-    target_files = [f for f in os.listdir(target_structure_dir) if f.endswith('.pdb')]  # 假设是 PDB 格式文件
+    # Get all files in target directory
+    target_files = [f for f in os.listdir(target_structure_dir) if f.endswith('.pdb')]  # Assume PDB format files
     target_paths = [os.path.join(target_structure_dir, f) for f in target_files]
 
-    # 生成所有查询文件和目标文件的两两组合
+    # Generate all pairwise combinations of query files and target files
     all_combinations = [(query, target) for query in query_paths for target in target_paths]
 
-    # 将所有组合分成多个批次
+    # Split all combinations into multiple batches
     batches = [all_combinations[i:i + batch_size] for i in range(0, len(all_combinations), batch_size)]
 
-    # 使用多进程并行处理每个批次
+    # Use multi-processing to process each batch in parallel
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         futures = []
         
         for batch in batches:
-            # 每个批次都运行一个 TM-align 实例
+            # Run a TM-align instance for each batch
             futures.append(executor.submit(run_TM_align_batch, TM_align_bin, batch, output_dir))
             logging.debug(f"Running TM-align for batch ")
         
-        # 等待所有批次完成
+        # Wait for all batches to complete
         for future in futures:
             future.result()
 
@@ -376,32 +376,32 @@ def run_TM_align_batch_target_query_parallel(TM_align_bin, query_structure_dir, 
 
 def run_TM_align_batch_parallel(TM_align_bin, structure_dir, output_dir, batch_size=5000, num_workers=100):
     """
-    比较指定目录下的所有蛋白质结构文件，计算它们两两之间的 TM-score，分批次运行。
-    :param structure_dir: 蛋白质结构文件存放目录
-    :param output_dir: 结果输出目录
-    :param batch_size: 每批次运行的任务数
-    :param num_workers: 并行工作进程数
+    Compare all protein structure files in specified directory, calculate TM-scores between all pairs, run in batches.
+    :param structure_dir: Protein structure file storage directory
+    :param output_dir: Result output directory
+    :param batch_size: Number of tasks per batch
+    :param num_workers: Number of parallel worker processes
     """
-    # 获取目录中的所有文件
-    structure_files = [f for f in os.listdir(structure_dir) if f.endswith('.pdb')]  # 假设是 PDB 格式文件
+    # Get all files in directory
+    structure_files = [f for f in os.listdir(structure_dir) if f.endswith('.pdb')]  # Assume PDB format files
     structure_paths = [os.path.join(structure_dir, f) for f in structure_files]
 
-    # 生成所有的两两组合
+    # Generate all pairwise combinations
     all_combinations = list(itertools.combinations(structure_paths, 2))
 
-    # 将所有组合分成多个批次
+    # Split all combinations into multiple batches
     batches = [all_combinations[i:i + batch_size] for i in range(0, len(all_combinations), batch_size)]
 
-    # 使用多进程并行处理每个批次
+    # Use multi-processing to process each batch in parallel
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         futures = []
         
         for batch in batches:
-            # 每个批次都运行一个 TM-align 实例
+            # Run a TM-align instance for each batch
             futures.append(executor.submit(run_TM_align_batch, TM_align_bin, batch, output_dir))
-            logging.debug(f"runming TM-align for bacth ")
+            logging.debug(f"Running TM-align for batch ")
         
-        # 等待所有批次完成
+        # Wait for all batches to complete
         for future in futures:
             future.result()
 
@@ -409,35 +409,35 @@ def run_TM_align_batch_parallel(TM_align_bin, structure_dir, output_dir, batch_s
 
 def run_TM_align_batch(TM_align_bin, batch, output_dir):
     """
-    处理一个批次的比对任务
-    :param TM_align_bin: TM-align 可执行文件路径
-    :param batch: 一批次的比对任务（包含多个结构文件对）
-    :param output_dir: 输出结果存放目录
+    Process a batch of alignment tasks
+    :param TM_align_bin: TM-align executable file path
+    :param batch: A batch of alignment tasks (containing multiple structure file pairs)
+    :param output_dir: Output result storage directory
     """
-    # 对当前批次中的每一对结构文件进行比对
+    # Perform alignment for each structure file pair in current batch
     for structure1, structure2 in batch:
         run_TM_align(TM_align_bin, structure1, structure2, output_dir)
 def extract_TMalign_to_csv(input_dir, output_csv):
     """
-    解析指定目录下的所有 TM-align 结果文件，并将数据存入 CSV 文件
-    :param input_dir: 存放 TM-align 结果文件的目录
-    :param output_csv: 输出的 CSV 文件路径
+    Parse all TM-align result files in specified directory and store data in CSV file
+    :param input_dir: Directory storing TM-align result files
+    :param output_csv: Output CSV file path
     """
-    # 获取所有 TXT 文件
+    # Get all TXT files
     tmalign_files = [f for f in os.listdir(input_dir) if f.endswith('.txt')]
     tmalign_data = []
 
-    # 遍历所有文件，解析并提取数据
+    # Iterate through all files, parse and extract data
     for txt_file in tmalign_files:
         txt_file_path = os.path.join(input_dir, txt_file)
         result =  parse_TMalign_results0(txt_file_path)
         if result:
             tmalign_data.append(result)
 
-    # 将结果存储为 DataFrame
+    # Store results as DataFrame
     df = pd.DataFrame(tmalign_data)
 
-    # 保存为 CSV 文件
+    # Save as CSV file
     df.to_csv(output_csv, index=False)
     print(f"TM-align results saved to {output_csv}")
 
@@ -446,51 +446,51 @@ def extract_TMalign_to_csv(input_dir, output_csv):
 
 def run_foldseek_pad(fs_querydb, fs_padded_querydb, fs_rawdata="./fs_query_structures.raw", fs_results="./fs_query_results.m8", tmp_dir=FS_TMP_PATH, cov_mode=DEFAULT_FS_COV_MODE, coverage=FS_OVERLAP, alignment_type=DEFAULT_FS_ALIGNER, fs_bin_path=FS_BINARY_PATH):
     """
-    使用 Foldseek 执行查询数据库与目标数据库的比对，并启用 GPU 加速（如果填充数据库已经准备好）。
+    Use Foldseek to perform query database vs target database alignment, and enable GPU acceleration (if padded database is ready).
 
-    参数:
-    fs_querydb (str): 查询数据库路径。
-    fs_targetdb (str): 目标数据库路径。
-    fs_rawdata (str): 存储原始结果的路径。
-    fs_results (str): 存储最终结果的路径。
-    tmp_dir (str): 临时目录。
-    cov_mode (str): 覆盖模式。
-    coverage (str): 覆盖率。
-    alignment_type (str): 对齐类型。
-    fs_bin_path (str): Foldseek 二进制路径。
+    Parameters:
+    fs_querydb (str): Query database path.
+    fs_targetdb (str): Target database path.
+    fs_rawdata (str): Path to store raw results.
+    fs_results (str): Path to store final results.
+    tmp_dir (str): Temporary directory.
+    cov_mode (str): Coverage mode.
+    coverage (str): Coverage.
+    alignment_type (str): Alignment type.
+    fs_bin_path (str): Foldseek binary path.
 
-    返回:
+    Returns:
     None
     """
 
 
-    # 运行 Foldseek 的搜索命令，启用 GPU 加速
+    # Run Foldseek search command, enable GPU acceleration
     subprocess.run(
         [
             fs_bin_path,
             "search",
-            fs_querydb,  # 使用填充后的查询数据库
-            fs_padded_querydb,  # 使用填充后的目标数据库
+            fs_querydb,  # Use padded query database
+            fs_padded_querydb,  # Use padded target database
             fs_rawdata,
-            "-s", "9.5",  # Sensitivity 参数
-            "--cov-mode", str(cov_mode),  # 覆盖模式
-            "--num-iterations", "3",  # 迭代次数
-            "-c", str(coverage),  # 覆盖率
+            "-s", "9.5",  # Sensitivity parameter
+            "--cov-mode", str(cov_mode),  # Coverage mode
+            "--num-iterations", "3",  # Number of iterations
+            "-c", str(coverage),  # Coverage
             "--alignment-type", 
-            "2",  # 对齐方式
-            "--gpu", "1",  # 启用 GPU 加速
+            "2",  # Alignment method
+            "--gpu", "1",  # Enable GPU acceleration
         ],
         stderr=subprocess.DEVNULL,
         check=True,
     )
 
-    # 将结果转换为指定格式
+    # Convert results to specified format
     subprocess.run(
         [
             fs_bin_path,
             "convertalis",
-            fs_padded_querydb,  # 使用填充后的查询数据库
-            fs_padded_targetdb,  # 使用填充后的目标数据库
+            fs_padded_querydb,  # Use padded query database
+            fs_padded_targetdb,  # Use padded target database
             fs_rawdata,
             fs_results,
             "--format-output",
@@ -500,7 +500,7 @@ def run_foldseek_pad(fs_querydb, fs_padded_querydb, fs_rawdata="./fs_query_struc
         check=True,
     )
 
-    # 删除临时文件
+    # Delete temporary files
     files_to_remove = glob.glob(f"{fs_rawdata}*")
     if files_to_remove:
         for file in files_to_remove:
@@ -541,7 +541,7 @@ def run_foldseek_pairwise(
             "--alignment-type", str(alignment_type),
             "--num-iterations", "3",
             "-e", "0.1",
-            "--max-seqs", str(max_seqs)  # <<—— 限制为 top-1 匹配
+            "--max-seqs", str(max_seqs)  # <<—— Limit to top-1 match
         ],
         stderr=subprocess.DEVNULL,
         check=True,
@@ -569,7 +569,7 @@ def run_foldseek_pairwise(
     print("Foldseek pairwise run completed.")
 def run_foldseek1(fs_querydb, fs_targetdb, fs_rawdata="./fs_query_structures.raw", fs_results="./fs_query_results.m8", tmp_dir=FS_TMP_PATH, cov_mode=DEFAULT_FS_COV_MODE, coverage=FS_OVERLAP, alignment_type=DEFAULT_FS_ALIGNER, fs_bin_path=FS_BINARY_PATH):
     "Run Foldseek Query DB against Target DB"
-    #alignment_type = 1  0：3Di Gotoh-Smith-Waterman（局部，不推荐），1：TMalign（全局，慢），2：3Di+AA Gotoh-Smith-Waterman（局部，默认）
+    #alignment_type = 1  0：3Di Gotoh-Smith-Waterman (local, not recommended), 1：TMalign (global, slow), 2：3Di+AA Gotoh-Smith-Waterman (local, default)
     #ensure_dir(fs_results)
     assert str(fs_rawdata) != ''
     subprocess.run(
@@ -594,8 +594,8 @@ def run_foldseek1(fs_querydb, fs_targetdb, fs_rawdata="./fs_query_structures.raw
             "0.1",
             "--max-seqs", 
             "10000000" ,
-            "--threads", "1"  # 单线程运行
-            #"--seed-sub-mat", "aa:3di.out,nucl:3di.out"     # 固定随机种子
+            "--threads", "1"  # Run with single thread
+            #"--seed-sub-mat", "aa:3di.out,nucl:3di.out"     # Fixed random seed
             
         ],
         stderr=subprocess.DEVNULL,
@@ -622,7 +622,7 @@ def run_foldseek1(fs_querydb, fs_targetdb, fs_rawdata="./fs_query_structures.raw
     print("run foldseek done")
 def run_foldseek(fs_querydb, fs_targetdb, fs_rawdata="./fs_query_structures.raw", fs_results="./fs_query_results.m8", tmp_dir=FS_TMP_PATH, cov_mode=DEFAULT_FS_COV_MODE, coverage=FS_OVERLAP, alignment_type=DEFAULT_FS_ALIGNER, fs_bin_path=FS_BINARY_PATH):
     "Run Foldseek Query DB against Target DB"
-    #alignment_type = 1  0：3Di Gotoh-Smith-Waterman（局部，不推荐），1：TMalign（全局，慢），2：3Di+AA Gotoh-Smith-Waterman（局部，默认）
+    #alignment_type = 1  0：3Di Gotoh-Smith-Waterman (local, not recommended), 1：TMalign (global, slow), 2：3Di+AA Gotoh-Smith-Waterman (local, default)
     #ensure_dir(fs_results)
     assert str(fs_rawdata) != ''
     subprocess.run(
@@ -679,10 +679,10 @@ def run_foldseek_with_error_handling(fs_querydb, fs_targetdb, fs_rawdata="./fs_q
                                     fs_results="./fs_query_results.m8", tmp_dir=FS_TMP_PATH, 
                                     cov_mode=DEFAULT_FS_COV_MODE, coverage=FS_OVERLAP, 
                                     alignment_type=DEFAULT_FS_ALIGNER, fs_bin_path=FS_BINARY_PATH):
-    """运行Foldseek并处理可能的错误"""
+    """Run Foldseek and handle possible errors"""
     assert str(fs_rawdata) != ''
     try:
-        # 第一步：prefilter步骤
+        # Step 1: prefilter step
         result = subprocess.run(
             [ "nice", "-n", "0", "ionice", "-c", "2", "-n", "0",
                 fs_bin_path,
@@ -708,25 +708,25 @@ def run_foldseek_with_error_handling(fs_querydb, fs_targetdb, fs_rawdata="./fs_q
             ],
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            check=False,  # 改为False以捕获错误
-            timeout=300   # 添加超时时间，避免永久挂起
+            check=False,  # Change to False to capture errors
+            timeout=300   # Add timeout to avoid permanent hanging
         )
         
-        # 检查是否有"Prefilter died"错误
+        # Check for "Prefilter died" error
         stderr_output = result.stderr.decode('utf-8', errors='ignore')
         if "Error: Prefilter died" in stderr_output or "Error: Kmer matching step died" in stderr_output:
-            print(f"预过滤步骤失败，可能没有结构匹配: {stderr_output}")
-            # 创建一个空的结果文件
+            print(f"Prefilter step failed, possibly no structure matches: {stderr_output}")
+            # Create an empty result file
             with open(fs_results, 'w') as f:
-                # 写入一个空的结果头部
+                # Write an empty result header
                 f.write("query\ttarget\tqstart\ttstart\tqend\tend\tevalue\tgapopen\tpident\talnlen\tmismatch\tqcov\ttcov\tqlen\ttlen\tqaln\ttaln\tcfweight\n")
             return False
         
         if result.returncode != 0:
-            print(f"搜索命令失败，返回码: {result.returncode}, 错误: {stderr_output}")
+            print(f"Search command failed, return code: {result.returncode}, error: {stderr_output}")
             return False
             
-        # 第二步：convertalis步骤
+        # Step 2: convertalis step
         result = subprocess.run(
             ["nice", "-n", "0", "ionice", "-c", "2", "-n", "0",
                 fs_bin_path,
@@ -745,30 +745,30 @@ def run_foldseek_with_error_handling(fs_querydb, fs_targetdb, fs_rawdata="./fs_q
         
         if result.returncode != 0:
             stderr_output = result.stderr.decode('utf-8', errors='ignore')
-            print(f"转换结果失败，返回码: {result.returncode}, 错误: {stderr_output}")
+            print(f"Result conversion failed, return code: {result.returncode}, error: {stderr_output}")
             return False
             
-        # 清理临时文件
+        # Clean temporary files
         files_to_remove = glob.glob(f"{fs_rawdata}*")
         if files_to_remove:
             for file in files_to_remove:
                 try:
                     os.unlink(file)
                 except Exception as e:
-                    print(f"删除文件 {file} 时出错: {e}")
+                    print(f"Error deleting file {file}: {e}")
         
-        print("foldseek运行成功")
+        print("foldseek run successful")
         return True
         
     except subprocess.TimeoutExpired:
-        print(f"运行foldseek超时")
+        print(f"foldseek run timeout")
         return False
     except Exception as e:
-        print(f"运行foldseek时发生错误: {e}")
+        print(f"Error running foldseek: {e}")
         return False
 def run_foldseek0(fs_querydb, fs_targetdb, fs_rawdata="./fs_query_structures.raw", fs_results="./fs_query_results.m8", tmp_dir=FS_TMP_PATH, cov_mode=DEFAULT_FS_COV_MODE, coverage=FS_OVERLAP, alignment_type=DEFAULT_FS_ALIGNER, fs_bin_path=FS_BINARY_PATH):
     "Run Foldseek Query DB against Target DB"
-    #alignment_type = 1  0：3Di Gotoh-Smith-Waterman（局部，不推荐），1：TMalign（全局，慢），2：3Di+AA Gotoh-Smith-Waterman（局部，默认）
+    #alignment_type = 1  0：3Di Gotoh-Smith-Waterman (local, not recommended), 1：TMalign (global, slow), 2：3Di+AA Gotoh-Smith-Waterman (local, default)
     #ensure_dir(fs_results)
     assert str(fs_rawdata) != ''
     subprocess.run(
@@ -820,25 +820,25 @@ def run_foldseek0(fs_querydb, fs_targetdb, fs_rawdata="./fs_query_structures.raw
 
 def prepare_db_for_gpu_search_for_foldseek(fs_querydb_file, fs_padded_db_file):
     """
-    为GPU搜索准备Foldseek数据库，填充数据库以支持GPU搜索。
+    Prepare Foldseek database for GPU search, pad database to support GPU search.
 
-    参数:
-    fs_querydb_path (str): 输入的Foldseek数据库路径（已通过createdb创建的数据库）。
-    fs_padded_db_path (str): 输出填充后的数据库路径，用于GPU搜索。
-    fs_bin_path (str): Foldseek二进制文件的路径，默认为FS_BINARY_PATH。
+    Parameters:
+    fs_querydb_path (str): Input Foldseek database path (database already created via createdb).
+    fs_padded_db_path (str): Output padded database path for GPU search.
+    fs_bin_path (str): Foldseek binary file path, default is FS_BINARY_PATH.
 
-    返回:
+    Returns:
     None
     """
-    # 确保输出目录存在
+    # Ensure output directory exists
     
-    # 使用foldseek命令生成GPU兼容的填充数据库
+    # Use foldseek command to generate GPU-compatible padded database
     subprocess.run(
         [
             FS_BINARY_PATH,
-            "makepaddedseqdb",  # 将数据库格式化为适用于GPU搜索的格式
-            fs_querydb_file,    # 输入的Foldseek数据库
-            fs_padded_db_file   # 输出的填充后的数据库
+            "makepaddedseqdb",  # Format database for GPU search
+            fs_querydb_file,    # Input Foldseek database
+            fs_padded_db_file   # Output padded database
         ],
         stderr=subprocess.DEVNULL,
         check=True,
@@ -862,22 +862,22 @@ def convert_pdb_to_foldseek_db(pdb_dir, fs_db_dir, fs_db_name="fs_db"):
         check=True,
     )
 def ensure_file(file_path):
-    """确保文件存在，如果文件不存在则创建一个空文件"""
+    """Ensure file exists, create empty file if file doesn't exist"""
     if not os.path.exists(file_path):
         with open(file_path, 'w') as f:
-            pass  # 创建一个空文件
+            pass  # Create an empty file
         print(f"File created: {file_path}")
     else:
         print(f"File already exists: {file_path}")
-# 创建保存目录
+# Create save directory
 def ensure_dir(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
          
 def process_fasta_and_pdb_data(raw_data_dir, raw_keyword):
-    """处理FASTA和PDB数据，提取有效的序列和文件"""
+    """Process FASTA and PDB data, extract valid sequences and files"""
     
-    # 定义路径
+    # Define paths
     fasta_file = os.path.join(raw_data_dir, f"{raw_keyword}_fasta_filtered.fasta")
     pdb_data_dir = os.path.join(raw_data_dir, f"pdb_data_filtered/")
     cif_data_dir = os.path.join(raw_data_dir, f"cif_data_filtered/")
@@ -886,55 +886,55 @@ def process_fasta_and_pdb_data(raw_data_dir, raw_keyword):
     new_pdb_dir = os.path.join(new_dir, f"pdb_data/")
     new_cif_dir = os.path.join(new_dir, f"cif_data/")
 
-    # 创建目标文件夹
+    # Create target folders
     ensure_dir(new_dir)
     ensure_dir(new_pdb_dir)
     ensure_dir(new_cif_dir)
-    # 读取CSV文件并过滤
+    # Read CSV file and filter
     uniprot_data = pd.read_csv(pdb_source_file)
     filtered_data = uniprot_data[uniprot_data['PDB Source'] != 'Not Found']
     new_id_file = os.path.join(new_dir, f"{raw_keyword}_uniprot_id.csv")
     filtered_data.to_csv(new_id_file, index=False)
     id_list = filtered_data['UniProt ID'].tolist()
 
-    # 复制以id_list开头的文件
+    # Copy files starting with id_list
     
     for protein_id in id_list:
-        # 处理PDB文件
+        # Process PDB files
         pdb_file = os.path.join(pdb_data_dir, f"{protein_id}.pdb")
         if os.path.exists(pdb_file):
             shutil.copy(pdb_file, new_pdb_dir)
 
-        # 处理CIF文件
+        # Process CIF files
         cif_file = os.path.join(cif_data_dir, f"{protein_id}.cif")
         if os.path.exists(cif_file):
             shutil.copy(cif_file, new_cif_dir)
     
-    # 提取对应的FASTA序列
+    # Extract corresponding FASTA sequences
     new_fasta_file = os.path.join(new_dir, f"{raw_keyword}_fasta.fasta")
     ensure_file(new_fasta_file)
     with open(fasta_file, 'r') as f, open(new_fasta_file, 'w') as new_fasta:
         record = False
         for line in f:
             if line.startswith(">sp|") or line.startswith(">tr|"):
-                # 提取ID
+                # Extract ID
                 start = line.find('|') + 1
                 end = line.find('|', start)
                 if end != -1:
-                    seq_id = line[start:end].strip()  # 提取ID
+                    seq_id = line[start:end].strip()  # Extract ID
                     print(seq_id)
                     if any(seq_id.startswith(id_) for id_ in id_list):
-                        new_fasta.write(line)  # 写入FASTA头
-                        record = True  # 开始记录序列
+                        new_fasta.write(line)  # Write FASTA header
+                        record = True  # Start recording sequence
                         print(f"{seq_id}: in")
-                        id_list.remove(seq_id)  # 移除已处理的ID
+                        id_list.remove(seq_id)  # Remove processed ID
                     else:
                         record = False
                         print(f"{seq_id}: not in")
                 else:
                     record = False
             elif record:
-                new_fasta.write(line)  # 只写入与id_list匹配的序列
+                new_fasta.write(line)  # Only write sequences matching id_list
 
     print(f"Filtered FASTA file saved to: {new_fasta_file}")
 
