@@ -77,6 +77,8 @@ Estimated Time: 1-2 hours
 
 ## Data and Directory Structure
 
+> Before running, download the dataset from the [link](https://drive.google.com/drive/folders/1yjwo5MfXrfzFUIsB4ySgzUkuid5nK47k?usp=drive_link) below and place it into the data directory under a folder with the same name.
+
 ```bash
 SMAL-DR/
 ├─ src/
@@ -88,8 +90,10 @@ SMAL-DR/
 │  ├─ utils1.py                         # Task1/structure-related utilities
 │  └─ utils2.py                         # Task2 (DALI) utilities
 ├─ data/
+│  ├─ inference_data/               # inference data for demo
+│  ├─ Esm2Embedding-sp-1280/        # train data for demo
 │  ├─ All_wet_ID.xlsx
-│  ├─ config.json     
+│  ├─ config.json                   # configuration file
 │  ├─ HNH_TED_info.xlsx
 │  └─ HNH_trueSpcas9/
 │     └─ Q99ZW2_774-900_HNH.pdb
