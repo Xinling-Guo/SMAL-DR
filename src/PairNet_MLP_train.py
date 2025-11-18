@@ -23,12 +23,13 @@ def set_seed(seed: int = 42):
 # ----------------- Dataset -----------------
 class PairwiseDataset(Dataset):
     def __init__(self, dataset_dir: Path, metric_name: List, diff_threshold: float = 0.0, embeddings_dir: Path = None):
+        self.embeddings_dir = embeddings_dir
         self.pdb_ids, self.embeddings, self.embeddings_sup, self.labels = self._load_embeddings(dataset_dir, metric_name)
         self.pairs = self._generate_pairs(self.labels, diff_threshold)
 
     def _load_embeddings(self, data_dir: Path, metric_name: List):
-        files = sorted(embeddings_dir.glob("*.npy"))
-        metric_file = embeddings_dir / "data_point.json"
+        files = sorted(self.embeddings_dir.glob("*.npy"))
+        metric_file = self.embeddings_dir / "data_point.json"
         metric_df = pd.read_json(metric_file)
 
         pdb_ids = []
@@ -42,7 +43,7 @@ class PairwiseDataset(Dataset):
             val = np.mean([metric_df.loc[metric_df['Variants'] == pdb_id, m].values[0] for m in metric_name])
             
             labels.append(val)
-            emb = torch.tensor(np.load(embeddings_dir / f"{pdb_id}.npy"), dtype=torch.float32)
+            emb = torch.tensor(np.load(self.embeddings_dir / f"{pdb_id}.npy"), dtype=torch.float32)
 
             # 获取三个位点的embeddings
             order = metric_df.loc[metric_df['Variants'] == pdb_id, 'active_numbers'].values[0]

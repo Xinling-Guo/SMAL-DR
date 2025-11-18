@@ -2,9 +2,15 @@ import json
 import os
 import sys
 import pandas as pd
+import numpy as np
 import logging
 from pathlib import Path
 import argparse
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+
 
 # Add utils path and import
 utils_path = '/mnt/sdb4/protein_gen/Cas9_domain_work/code_submit/'
@@ -175,7 +181,7 @@ class SMALDRTask1:
         hnh_cath_in_ted = os.path.join(self.work_dir, "HNH_cath_in_ted.csv")
         
         # Get TED domains by CATH label  need more time gxl
-        task1_utils.get_ted_domains_by_cath_label(true_hnh_ted_info, ted_domain_cath_info, hnh_cath_in_ted)
+        task1_utils.get_ted_domains_by_cath_label(true_hnh_ted_info, ted_domain_cath_info, hnh_cath_in_ted) #打开
         
         # Setup directories
         protein_cath_teddb_dir = os.path.join(self.work_dir, "pdb_cath_teddb")
@@ -190,8 +196,13 @@ class SMALDRTask1:
         pdb_cath_teddb_fasta = os.path.join(self.work_dir, "pdb_cath_teddb_fasta.fasta")
         domain_cath_teddb_fasta = os.path.join(self.work_dir, "domain_cath_teddb_fasta.fasta")
         
+        self.logger.info("Dowaload alphafold structure data for Cath_teddb....")
+        self.logger.info("Check if the AlphaFold structural prediction data and url has been updated")
+        self.logger.info("This project uses models in the format of AF-[PDB_ID]-F1-model_v4, such as AF-A0A010JW67-F1-model_v4")
+        
         task1_utils.download_pdb_and_fasta_from_AFDB_parallel(hnh_cath_in_ted, protein_cath_teddb_dir, pdb_cath_teddb_fasta)
         
+        self.logger.info("Dowaload fasta data for Cath_teddb....")
         task1_utils.split_domain_by_ted_boundary_and_save_fasta_parallel( hnh_cath_in_ted, protein_cath_teddb_dir, domain_cath_teddb_dir, domain_cath_teddb_fasta, pdb_cath_teddb_fasta )
         
         self.logger.info("Step 2.2 completed successfully")
@@ -213,10 +224,10 @@ class SMALDRTask1:
 
         
         # Get TED domains by cluster
-        task1_utils.get_ted_domains_by_cluster(true_hnh_ted_info, ted_domain_cluster_info, hnh_cluster_in_ted)
+        #task1_utils.get_ted_domains_by_cluster(true_hnh_ted_info, ted_domain_cluster_info, hnh_cluster_in_ted)
         
         # Add domain range information
-        task1_utils.add_domain_range_with_ted_info(hnh_cluster_in_ted, ted_domain_cath_info, hnh_cluster_in_ted)
+        #task1_utils.add_domain_range_with_ted_info(hnh_cluster_in_ted, ted_domain_cath_info, hnh_cluster_in_ted)
         
         # Setup directories
         protein_cluster_teddb_dir = os.path.join(self.work_dir, "pdb_cluster_teddb")
@@ -231,7 +242,7 @@ class SMALDRTask1:
         pdb_cluster_teddb_fasta = os.path.join(self.work_dir, "pdb_cluster_teddb_fasta.fasta")
         domain_cluster_teddb_fasta = os.path.join(self.work_dir, "domain_cluster_teddb_fasta.fasta")
         
-        task1_utils.download_pdb_and_fasta_from_AFDB_parallel( hnh_cluster_in_ted, protein_cluster_teddb_dir,  pdb_cluster_teddb_fasta )
+        #task1_utils.download_pdb_and_fasta_from_AFDB_parallel( hnh_cluster_in_ted, protein_cluster_teddb_dir,  pdb_cluster_teddb_fasta )
         
         task1_utils.split_domain_by_ted_boundary_and_save_fasta_parallel( hnh_cluster_in_ted, protein_cluster_teddb_dir, domain_cluster_teddb_dir, domain_cluster_teddb_fasta, pdb_cluster_teddb_fasta)
         
@@ -246,6 +257,7 @@ class SMALDRTask1:
         self.logger.info("Running Step 3.1: Structural similarity analysis for CATH-TEDDB candidates")
         
         # Get paths from config
+        fs_bin = self.config['foldseek_binary_path']
         wt_domain_dir = self.get_full_path(self.config['input_files']['wt_domain_dir'])
         domain_cath_teddb_dir = os.path.join(self.work_dir, "domain_cath_teddb")
         
@@ -264,12 +276,13 @@ class SMALDRTask1:
         os.makedirs(fs_targetdb_path, exist_ok=True)
         
         # Convert PDB files to Foldseek databases
-        task1_utils.convert_pdb_to_foldseek_db(wt_domain_dir, fs_querydb_path, fs_querydb_name)
-        task1_utils.convert_pdb_to_foldseek_db(domain_cath_teddb_dir, fs_targetdb_path, fs_targetdb_name)
+        task1_utils.convert_pdb_to_foldseek_db(fs_bin,wt_domain_dir, fs_querydb_path, fs_querydb_name)
+        task1_utils.convert_pdb_to_foldseek_db(fs_bin,domain_cath_teddb_dir, fs_targetdb_path, fs_targetdb_name)
         
         # Run Foldseek structural alignment
         fs_result_file = os.path.join(fs_results_dirs, f"{fs_querydb_name}.m8")
         task1_utils.run_foldseek(
+            fs_bin,
             os.path.join(fs_querydb_path, f"{fs_querydb_name}.db"),
             os.path.join(fs_targetdb_path, f"{fs_targetdb_name}.db"),
             fs_results=fs_result_file)
@@ -292,6 +305,7 @@ class SMALDRTask1:
         self.logger.info("Running Step 3.2: Structural similarity analysis for Cluster-TEDDB candidates")
         
         # Get paths from config
+        fs_bin = self.config['foldseek_binary_path']
         wt_domain_dir = self.get_full_path(self.config['input_files']['wt_domain_dir'])
         domain_cluster_teddb_dir = os.path.join(self.work_dir, "domain_cluster_teddb")
         
@@ -310,12 +324,13 @@ class SMALDRTask1:
         os.makedirs(fs_targetdb_path, exist_ok=True)
         
         # Convert PDB files to Foldseek databases
-        task1_utils.convert_pdb_to_foldseek_db(wt_domain_dir, fs_querydb_path, fs_querydb_name)
-        task1_utils.convert_pdb_to_foldseek_db(domain_cluster_teddb_dir, fs_targetdb_path, fs_targetdb_name)
+        task1_utils.convert_pdb_to_foldseek_db(fs_bin,wt_domain_dir, fs_querydb_path, fs_querydb_name)
+        task1_utils.convert_pdb_to_foldseek_db(fs_bin,domain_cluster_teddb_dir, fs_targetdb_path, fs_targetdb_name)
         
         # Run Foldseek structural alignment
         fs_result_file = os.path.join(fs_results_dirs, f"{fs_querydb_name}.m8")
         task1_utils.run_foldseek(
+            fs_bin,
             os.path.join(fs_querydb_path, f"{fs_querydb_name}.db"),
             os.path.join(fs_targetdb_path, f"{fs_targetdb_name}.db"),
              fs_results=fs_result_file
@@ -341,7 +356,7 @@ class SMALDRTask1:
         pdb_cath_teddb_fasta = os.path.join(self.work_dir, "pdb_cath_teddb_fasta.fasta")
         pdb_cluster_teddb_fasta = os.path.join(self.work_dir, "pdb_cluster_teddb_fasta.fasta")
         all_fasta_path = self.get_full_path(self.config['input_files']['all_fasta'])
-        task1_utils.merge_fasta_files([pdb_cath_teddb_fasta,pdb_cluster_teddb_fasta ],all_fasta_path)
+        #task1_utils.merge_fasta_files([pdb_cath_teddb_fasta,pdb_cluster_teddb_fasta ],all_fasta_path)
         fasta_dict = task1_utils.load_fasta_to_dict(all_fasta_path)
         
         # Process cath-teddb data
@@ -350,13 +365,13 @@ class SMALDRTask1:
         network_dir = os.path.join(data_dir, "domain_cath_teddb", "cytoscape_network")
         os.makedirs(network_dir, exist_ok=True)
         all_cath_teddb = os.path.join(network_dir, "domain_cath_teddb_SpCas9.csv")
-        task1_utils.process_fs_reslult_new(network_dir+"/cas9_fs_edge.csv", all_cath_teddb)
+        #task1_utils.process_fs_reslult_new(network_dir+"/cas9_fs_edge.csv", all_cath_teddb)
         
         # Process cluster-teddb data
         network_dir_cluster = os.path.join(data_dir, "domain_cluster_teddb", "cytoscape_network")
         os.makedirs(network_dir_cluster, exist_ok=True)
         all_cluster_teddb = os.path.join(network_dir_cluster, "domain_cluster_teddb_SpCas9.csv")
-        task1_utils.process_fs_reslult_new(network_dir_cluster+"/cas9_fs_edge.csv", all_cluster_teddb)
+        #task1_utils.process_fs_reslult_new(network_dir_cluster+"/cas9_fs_edge.csv", all_cluster_teddb)
         
         # Add domain information
         hnh_cath_in_ted = os.path.join(self.work_dir, "HNH_cath_in_ted.csv")
@@ -413,8 +428,8 @@ class SMALDRTask1:
             
             # Execute pipeline steps
             
-            self.run_step0()
-            self.run_step1()
+            #self.run_step0()
+            #self.run_step1()
             self.run_step2_cath_teddb()
             self.run_step2_cluster_teddb()
             self.run_step3_cath_teddb() 
@@ -657,8 +672,9 @@ class SMALDRTask3:
         
         # Configure directory paths
         self.data_dir = Path(self.config['task3_config']['data_dir'])
+        self.embeddings_dir = Path(self.config['task3_config']['embeddings_dir'])
         self.results_dir = Path(self.config['task3_config']['results_dir'])
-        self.model_save_dir = self.results_dir / "model_weights"
+        self.model_save_dir = self.results_dir / "model_weights"  # 权重文件保存在这里 TODO
         self.model_save_dir.mkdir(parents=True, exist_ok=True)
 
     def setup_logging(self):
@@ -741,7 +757,7 @@ class SMALDRTask4:
         self.logger = logging.getLogger(__name__)
         self.setup_logging()
 
-        self.main_dir = Path(self.config['task4_config']['main_dir'])
+        self.main_dir = Path(self.config['task4_config']['embeddings_dir'])
         self.output_dir = Path(self.config['task4_config']['output_dir'])
         self.model_weight = Path(self.config['task4_config']['model_weight'])
         self.cache_path = Path(self.config['task4_config']['cache_path'])
@@ -842,7 +858,7 @@ class SMALDRTask5:
         self.logger.info("Initializing transformer model...")
 
         # Initialize the transformer model using the provided config
-        self.model = task5_utils.PairNet(input_dim=1280, hidden_dim=self.config['task5_config']['hidden_dim']).to(self.device)
+        self.model = task5_utils.PairNet().to(self.device)
         
         # Setup loss function and optimizer
         self.loss_fn = torch.nn.MarginRankingLoss(margin=self.margin)
@@ -853,9 +869,10 @@ class SMALDRTask5:
     def run_step3_train(self):
         """Step 3: Training loop"""
         self.logger.info("Starting training...")
+        metric_name = ["FITNESS"]
 
         # Initialize the dataset and DataLoader
-        train_ds = task5_utils.PairwiseDataset(self.main_dir, self.embedding_dir)
+        train_ds = task5_utils.CustomPairwiseDataset(self.main_dir, metric_name)
         train_loader = DataLoader(train_ds, batch_size=self.batch_size, shuffle=True)
 
         # Training loop
@@ -964,26 +981,24 @@ def main(config_path):
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
     
     #............................................... Task1 : Structural fold mining from the TED database identifies diverse HNH-like domains for Cas9 engineering..........................................................................................#
-    
-    pipeline_task1 = SMALDRTask1(config_path)
-    #pipeline_task1.run_task1()
+    # pipeline_task1 = SMALDRTask1(config_path)
+    # pipeline_task1.run_task1()
         
     #............................................... Task2 :  Refining domain boundaries using DALI structural alignment to enhance recombinational compatibility..........................................................................................#
-
-    pipeline_task2 = SMALDRTask2(config_path)
-    #pipeline_task2.run_task2()
+    # pipeline_task2 = SMALDRTask2(config_path)
+    # pipeline_task2.run_task2()
    
     #............................................... Task3 :  Train RecombRank PairNet(MLP) by wet-lab data..........................................................................................#
-    pipeline_task3 = SMALDRTask3(config_path)
-    #pipeline_task3.run_task3()
+    # pipeline_task3 = SMALDRTask3(config_path)
+    # pipeline_task3.run_task3()
     
     #............................................... Task4 :  Inference by RecombRank PairNet(MLP)..........................................................................................#
-    pipeline_task4 = SMALDRTask4(config_path)
-    pipeline_task4.run_task4()
+    # pipeline_task4 = SMALDRTask4(config_path)
+    # pipeline_task4.run_task4()
     
     #............................................... Task3 :  Train RecombRank PairNet(Transformer) by wet-lab data..........................................................................................#
-    pipeline_task5 = SMALDRTask5(config_path)
-    pipeline_task5.run_task5()
+    # pipeline_task5 = SMALDRTask5(config_path)
+    # pipeline_task5.run_task5()
     
     #............................................... Task4 :  Inference by RecombRank PairNet(Transformer)..........................................................................................#
     pipeline_task6 = SMALDRTask6(config_path)
@@ -991,7 +1006,15 @@ def main(config_path):
     
 
 if __name__ == "__main__":
+    
+    # current_dir
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)  
+    default_config = os.path.join(project_root, "data",  "config.json")
+    
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", default="data/Cas9_submit/config.json")
+    ap.add_argument("--config", default=default_config)
     args = ap.parse_args()
+    
     main(args.config)
+    

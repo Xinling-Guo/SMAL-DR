@@ -95,8 +95,8 @@
     "final_results_file": "Dali_results/final_10_refined_candidates.csv"
   },
     "task3_config": {
-    "data_dir": "/root/autodl-tmp/PairNet/data",
-    "results_dir": "/root/autodl-tmp/PairNet/model_weights/train_seq_no_struc_mlp_all_wet_data_all_seq_3_site",
+    "data_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data",
+    "results_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/SMAL_DR_Results/train_seq_no_struc_mlp_all_wet_data_all_seq_3_site",
     "batch_size": 32,
     "lr": 3e-5,
     "weight_decay": 1e-4,
@@ -105,32 +105,31 @@
     "hidden_dim": 256,
     "epochs": 100,
     "patience": 20,
-    "embeddings_dir": "/root/autodl-tmp/PairNet/data/Esm2Embedding-sp-1280",
-    "model_save_dir": "/root/autodl-tmp/PairNet/model_weights",
+    "embeddings_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data/Esm2Embedding-sp-1280",
+    "model_save_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/SMAL_DR_Weights",
     "best_model_filename": "best_model.pth",
     "ranking_output_filename": "ranking_train.csv"
   },
 
   "task4_config": {
-    "main_dir": "/root/autodl-tmp/PairNet/data", 
-    "output_dir": "/root/autodl-tmp/PairNet/output/mlp_inference",  
-    "model_weight": "/root/autodl-tmp/PairNet/model_weights/train_seq_no_struc_mlp_all_wet_data_all_seq_3_site/best_model.pth",  
-    
+    "main_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data", 
+    "output_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/SMAL_DR_Results/mlp_inference",  
+    "model_weight": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/SMAL_DR_Results/train_seq_no_struc_mlp_all_wet_data_all_seq_3_site/model_weights/best_model.pth",
     "batch_size": 4096,  
     "mode": "mlp", 
     "num_gpus": 1, 
     "input_dim": 1280, 
     "threshold": 0.0, 
-    "cache_path": "/root/autodl-tmp/PairNet/embedding_cache.pt", 
-    
-    "embeddings_dir": "/root/autodl-tmp/PairNet/data/Esm2Embedding-sp-1280", 
-    "json_path": "/root/autodl-tmp/PairNet/data/data_point.json", 
+    "cache_path": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data/inference_data/embedding_cache.pt", 
+    "embeddings_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data/inference_data", 
+    "json_path": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data/inference_data/data_point.json", 
     "output_file": "final_sorted_winrates.csv" 
   },
 
     "task5_config": {
-    "main_dir": "/root/autodl-tmp/PairNet/data", 
-    "output_dir": "/root/autodl-tmp/PairNet/model_weights/transformer_train", 
+    "main_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data", 
+    "embedding_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data/Esm2Embedding-sp-1280", 
+    "output_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/SMAL_DR_Results/transformer_train", 
     "batch_size": 32,  
     "lr": 3e-5, 
     "weight_decay": 1e-4, 
@@ -143,26 +142,24 @@
     "rank": 0,  
     "local_rank": 0,  
     "world_size": 1, 
-    "cache_dir": "/root/autodl-tmp/PairNet/cache",  
-    "model_save_dir": "/root/autodl-tmp/PairNet/model_weights", 
-    "best_model_filename": "best_model_transformer.pth",  
-    "embedding_dir": "/root/autodl-tmp/PairNet/data/Esm2Embedding-sp-1280"  
+    "cache_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data",  
+    "model_save_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/SMAL_DR_Results/model_weights_transformer", 
+    "best_model_filename": "best_model.pth",  
+    "embedding_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data/Esm2Embedding-sp-1280"  
   },
 
    "task6_config": {
-    "main_dir": "/root/autodl-tmp/PairNet/data", 
-    "output_dir": "/root/autodl-tmp/PairNet/output/transformer_inference", 
-    "model_weight": "/root/autodl-tmp/PairNet/model_weights/transformer_train/best_model_transformer.pth", 
-    
+    "main_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data", 
+    "output_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/SMAL_DR_Results/transformer_inference", 
+    "model_weight": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/SMAL_DR_Results/model_weights_transformer/best_model.pth", 
     "batch_size": 4096,  
     "mode": "transformer", 
     "num_gpus": 1, 
     "input_dim": 1280, 
     "threshold": 0.0, 
-    "cache_path": "/root/autodl-tmp/PairNet/cache/embedding_cache.pt",  
-    
-    "embeddings_dir": "/root/autodl-tmp/PairNet/data/Esm2Embedding-sp-1280", 
-    "json_path": "/root/autodl-tmp/PairNet/data/data_point.json",  
+    "cache_path": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data/inference_data/embedding_cache.pt",  
+    "embeddings_dir": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data/inference_data", 
+    "json_path": "/mnt/sdb4/protein_gen/Cas9_domain_work/gittest/SMAL-DR/data/inference_data/data_point.json",  
     "output_file": "final_sorted_winrates.csv"  
   }
 
